@@ -8,8 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Moon, Sun, FileText, Sparkles, Scan, Download } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { extractPDFText } from '@/services/pdfService'
-import { performOCR } from '@/services/ocrService'
 import { createFullTextStream } from '@/services/aiService'
 import { PDFPage, NoteDocument, NotePage } from '@/types'
 import { generateId } from '@/lib/utils'
@@ -51,22 +49,28 @@ export default function Home() {
     setError(null)
 
     try {
-      let pdfPages: PDFPage[] = []
+      setProcessingStep('PDFをサーバーで処理中...')
+      setProcessingProgress(10)
 
-      setProcessingStep('PDFテキスト抽出中...')
-      pdfPages = await extractPDFText(file, (page, total) => {
-        setProcessingProgress(Math.round((page / total) * 30))
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const extractResponse = await fetch('/api/extract-pdf', {
+        method: 'POST',
+        body: formData,
       })
 
-      const needsOCR = pdfPages.some(p => p.isOcr)
-      if (needsOCR) {
-        setProcessingProgress(30)
-        pdfPages = await performOCR(pdfPages, (page, total, status) => {
-          setProcessingStep(status)
-          setProcessingProgress(30 + Math.round((page / total) * 30))
-        })
-      } else {
-        setProcessingProgress(60)
+      if (!extractResponse.ok) {
+        const err = await extractResponse.json()
+        throw new Error(err.error || 'PDFの処理に失敗しました')
+      }
+
+      const { pages: pdfPages } = await extractResponse.json() as { pages: PDFPage[] }
+      setProcessingProgress(60)
+
+      const ocrCount = pdfPages.filter(p => p.isOcr).length
+      if (ocrCount > 0) {
+        setProcessingStep(`${ocrCount}ページが画像形式のためテキスト抽出できませんでした`)
       }
 
       setProcessingStep('テキスト前処理中...')
