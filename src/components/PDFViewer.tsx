@@ -67,7 +67,7 @@ export function PDFViewer({ file, currentPage, totalPages = 0, onPageChange }: P
             variant="ghost"
             size="icon"
             onClick={goToNextPage}
-            disabled={displayMaxPages && currentPage >= displayMaxPages}
+            disabled={!!displayMaxPages && currentPage >= displayMaxPages}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
