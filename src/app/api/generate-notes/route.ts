@@ -33,7 +33,7 @@ async function callDeepSeek(prompt: string, apiKey: string): Promise<string> {
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 4000
+      max_tokens: 8192
     })
   })
 
@@ -51,7 +51,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${prompt}` }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
+      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
     })
   })
 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cleaned = content.trim()
-    const truncated = truncateText(cleaned, 6000)
+    const truncated = truncateText(cleaned, 32000)
 
     const prompt = `以下の資料テキストを解析し、学習ノートを生成してください：
 
