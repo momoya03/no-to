@@ -525,7 +525,7 @@ function generateStructuredNotes(fullText: string, pageCount: number): string {
   output += lines.slice(0, 80).join('\n')
   if (lines.length > 80) output += `\n\n...（以下省略：全${lines.length}行）`
 
-  return enrichText(output)
+  return output
 }
 
 // ========== Main entry point ==========
