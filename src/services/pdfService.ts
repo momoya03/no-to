@@ -3,7 +3,7 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import { PDFPage } from '@/types'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 
 export async function extractPDFText(file: File, onProgress?: (page: number, total: number) => void): Promise<PDFPage[]> {
