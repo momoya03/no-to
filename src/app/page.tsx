@@ -60,8 +60,8 @@ async function generateNotesWithAI(fullText: string, onProgress: (step: string, 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n以下の資料テキストを解析し、学習ノートを生成してください：\n\n${fullText.slice(0, 15000)}` }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n以下の資料テキストを解析し、学習ノートを生成してください：\n\n${fullText.slice(0, 40000)}` }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
         })
       }
     )
