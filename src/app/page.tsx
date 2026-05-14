@@ -13,25 +13,69 @@ import { extractPDFText } from '@/services/pdfService'
 import { PDFPage, NoteDocument, NotePage } from '@/types'
 import { generateId } from '@/lib/utils'
 
+const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+
 async function generateNotesWithAI(fullText: string, onProgress: (step: string, progress: number) => void): Promise<string> {
   onProgress('AIによるノート生成中...', 0)
 
+  // Fall back to server API if no client-side key
+  if (!GEMINI_KEY) {
+    try {
+      const response = await fetch('/api/generate-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: fullText })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        return data.notes || ''
+      }
+    } catch {}
+    return ''
+  }
+
+  // Call Gemini directly from client (bypass Vercel timeout)
   try {
-    const response = await fetch('/api/generate-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: fullText })
-    })
+    const SYSTEM_PROMPT = `あなたはプロフェッショナルなノート作成アシスタントです。中国人留学生向けの学習用ノートを生成してください。
+
+【絶対禁止】
+- 表（テーブル）禁止、箇条書き（-）と見出し（#、##）のみ
+- 捏造禁止、不明点は「記載なし」
+- 参考文献・引用文献・出典リストは絶対に出力しない
+- 元テキスト・原文の丸写しセクション禁止
+- ページ番号言及禁止
+
+【数字強調】重要な数値（統計、割合、金額、年号、数量）は必ず **太字**
+
+【出力構成】
+1. タイトルと基本情報
+2. 全体構成（目次）
+3. セクションごとの重要ポイント
+4. 重要キーワード一覧
+5. 自己テスト問題3問（模範解答付き）`
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n以下の資料テキストを解析し、学習ノートを生成してください：\n\n${fullText.slice(0, 15000)}` }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+        })
+      }
+    )
 
     if (response.ok) {
       const data = await response.json()
-      return data.notes || ''
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      return text
     }
 
     return ''
   } catch (error) {
     console.error('AI generation error:', error)
-    return 'AIによるノート生成中にエラーが発生しました'
+    return ''
   }
 }
 
