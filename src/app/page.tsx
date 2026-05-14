@@ -74,7 +74,7 @@ export default function Home() {
           setProcessingStep(step)
           setProcessingProgress(75 + Math.round(progress * 0.2))
         })
-      } catch {}
+      } catch (e) { console.error('AI generation failed:', e) }
 
       if (!aiNotes) {
         const { generateNotesLocal } = await import('@/services/aiService')
