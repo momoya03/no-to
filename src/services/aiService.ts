@@ -78,8 +78,7 @@ function cleanPdfTextCompletely(text: string): string {
     /配布日.*?(?=\n|$)/g,
     /改訂日.*?(?=\n|$)/g,
     /title.*?(?=\n|$)/gi,
-    /タイトル.*?(?=
-|$)/g,
+    /タイトル.*?(?=\n|$)/g,
     /[A-Za-z]{2,4}\d{2,4}[A-Za-z]?/g,
     // PPT slide markers
     /Slide\s*\d+/gi,
@@ -89,7 +88,7 @@ function cleanPdfTextCompletely(text: string): string {
     /\d{4}[\/\-\.年]\d{1,2}[\/\-\.月]\d{1,2}日?/g,
     /\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g,
     // Single char repeated (extraction artifacts)
-    /(.){8,}/g,
+    /(.)\1{8,}/g,
   ]
   watermarkPatterns.forEach(pattern => {
     result = result.replace(pattern, '')
