@@ -485,7 +485,7 @@ function enrichText(text: string): string {
   }
 
   for (const [word, cn] of Object.entries(CN_ANNOTATION_DICT)) {
-    const regex = new RegExp(`(?<![（(])${word}(?!（中文)[）)])`, 'g')
+    const regex = new RegExp(`(?<![（(])${word}(?!（中文|[）)])`, 'g')
     let count = 0
     result = result.replace(regex, (match) => {
       count++
