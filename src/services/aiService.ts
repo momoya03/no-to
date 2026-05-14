@@ -78,8 +78,18 @@ function cleanPdfTextCompletely(text: string): string {
     /配布日.*?(?=\n|$)/g,
     /改訂日.*?(?=\n|$)/g,
     /title.*?(?=\n|$)/gi,
-    /タイトル.*?(?=\n|$)/g,
+    /タイトル.*?(?=
+|$)/g,
     /[A-Za-z]{2,4}\d{2,4}[A-Za-z]?/g,
+    // PPT slide markers
+    /Slide\s*\d+/gi,
+    /スライド\s*\d+/g,
+    /\d+\s*\/\s*\d+\s*(ページ|頁|page|スライド)?/gi,
+    // Date formats in headers/footers
+    /\d{4}[\/\-\.年]\d{1,2}[\/\-\.月]\d{1,2}日?/g,
+    /\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g,
+    // Single char repeated (extraction artifacts)
+    /(.){8,}/g,
   ]
   watermarkPatterns.forEach(pattern => {
     result = result.replace(pattern, '')
@@ -315,32 +325,70 @@ function extractContext(text: string, term: string): string {
   return snippet
 }
 
+function scoreSentence(s: string): number {
+  let score = 0
+  if (s.length > 30 && s.length < 250) score += 1
+  if (/\d/.test(s)) score += 1.5 // numbers = facts/data
+  if (/[（(][^)）]+[)）]/.test(s)) score += 1 // definitions in parens
+  if (/は|が|とは|である|重要な|ポイント|定義|意味|特徴|分類|種類|方法|結果|原因|目的|課題|必要|ポイント/.test(s)) score += 1
+  if (/[！!?？]/.test(s)) score += 0.5 // engaging sentences
+  // Very short lines are usually garbage
+  if (s.length < 10) score -= 5
+  // Lines that are just numbers/symbols
+  if (/^[\d\s\.\-\/、,，・※\*]+$/.test(s)) score -= 5
+  return score
+}
+
+function extractKeySentences(text: string, maxCount: number = 6): string[] {
+  const raw = text.split(/[。！？.!?\n]/)
+    .map(s => s.trim())
+    .filter(s => s.length > 5)
+
+  if (raw.length === 0) return []
+
+  // Deduplicate
+  const seen = new Set<string>()
+  const unique = raw.filter(s => {
+    const key = s.slice(0, 20)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  const scored = unique.map(s => ({ s, score: scoreSentence(s) }))
+  scored.sort((a, b) => b.score - a.score)
+  const top = scored.slice(0, maxCount).map(x => x.s)
+
+  // Restore original order
+  return top.sort((a, b) => text.indexOf(a) - text.indexOf(b))
+}
+
 function buildContentSummary(lines: string[]): string {
   const sections = splitIntoSections(lines)
+  if (sections.length === 0) return ''
 
   let output = ''
 
-  if (sections.length > 0) {
+  // Table of contents
+  const headings = sections.map(s => s.heading).filter(h => h)
+  if (headings.length > 1) {
     output += `**構成:** `
-    const headings = sections.map(s => s.heading).filter(h => h)
-    output += headings.slice(0, 8).join(' → ')
-    if (headings.length > 8) output += ` ...他${headings.length - 8}セクション`
+    output += headings.slice(0, 10).join(' → ')
+    if (headings.length > 10) output += ` ...他${headings.length - 10}セクション`
     output += `\n\n`
   }
 
   for (const section of sections) {
+    const body = section.content.join(' ')
+    const keySentences = extractKeySentences(body, 5)
+
+    if (keySentences.length === 0) continue
+
     output += `## ${section.heading}\n\n`
-
-    const body = section.content.join('\n')
-    const paragraphs = body.split(/\n{2,}/).filter(p => p.trim().length > 10)
-
-    for (const para of paragraphs.slice(0, 8)) {
-      output += `${para.trim()}\n\n`
+    for (const s of keySentences) {
+      output += `- ${s}\n`
     }
-
-    if (paragraphs.length > 8) {
-      output += `*（続きは元テキスト参照）*\n\n`
-    }
+    output += '\n'
   }
 
   return output
@@ -498,7 +546,15 @@ function enrichText(text: string): string {
 }
 
 function generateStructuredNotes(fullText: string, pageCount: number): string {
-  const lines = fullText.split('\n').filter(line => line.trim())
+  // Split and deduplicate lines (PPT PDFs often have repeated headers/footers)
+  const allLines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+  const seen = new Set<string>()
+  const lines = allLines.filter(l => {
+    const key = l.slice(0, 30)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
   if (lines.length === 0) return '有効なテキストが見つかりませんでした。'
 
   const title = detectTitle(lines)
@@ -508,22 +564,23 @@ function generateStructuredNotes(fullText: string, pageCount: number): string {
   let output = `# ${title}\n\n`
   output += `**ページ数:** ${pageCount}ページ | **文字数:** ${fullText.length}文字\n\n---\n\n`
 
-  output += buildContentSummary(lines)
-
+  // Key concepts section
   if (keyTerms.length > 0) {
-    output += `---\n\n## 重要キーワード\n\n`
-    for (const term of keyTerms) {
+    output += `## 核心キーワード\n\n`
+    for (const term of keyTerms.slice(0, 12)) {
       const ctx = extractContext(fullText, term)
-      output += `- **${term}**${ctx ? `：${ctx}` : ''}\n`
+      output += `- **${term}**${ctx ? ` — ${ctx}` : ''}\n`
     }
-    output += '\n'
+    output += '\n---\n\n'
   }
 
-  output += `---\n\n## 自己確認問題\n\n${selfTestQ}\n\n---\n\n`
+  // Section-by-section refined content
+  output += buildContentSummary(lines)
 
-  output += `## 元テキスト（参考）\n\n`
-  output += lines.slice(0, 80).join('\n')
-  if (lines.length > 80) output += `\n\n...（以下省略：全${lines.length}行）`
+  // Self-test questions
+  if (selfTestQ.trim()) {
+    output += `---\n\n## 自己確認問題\n\n${selfTestQ}\n`
+  }
 
   return output
 }
