@@ -29,10 +29,10 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    
+
     const files = Array.from(e.dataTransfer.files)
     const pdfFile = files.find(f => f.type === 'application/pdf')
-    
+
     if (pdfFile) {
       setSelectedFile(pdfFile)
       onFileSelect(pdfFile)

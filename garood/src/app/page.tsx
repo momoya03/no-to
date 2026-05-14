@@ -10,9 +10,31 @@ import { Moon, Sun, FileText, Sparkles, Scan, Download } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { extractPDFText } from '@/services/pdfService'
 import { performOCR } from '@/services/ocrService'
-import { generateNotesLocal } from '@/services/aiService'
-import { PDFPage, NoteDocument } from '@/types'
+import { createFullTextStream } from '@/services/aiService'
+import { PDFPage, NoteDocument, NotePage } from '@/types'
 import { generateId } from '@/lib/utils'
+
+async function generateNotesWithAI(fullText: string, onProgress: (step: string, progress: number) => void): Promise<string> {
+  onProgress('AIによるノート生成中...', 0)
+
+  try {
+    const response = await fetch('/api/generate-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: fullText })
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      return data.notes || ''
+    }
+
+    return ''
+  } catch (error) {
+    console.error('AI generation error:', error)
+    return 'AIによるノート生成中にエラーが発生しました'
+  }
+}
 
 export default function Home() {
   const { theme, setTheme } = useTheme()
@@ -41,34 +63,70 @@ export default function Home() {
         setProcessingProgress(30)
         pdfPages = await performOCR(pdfPages, (page, total, status) => {
           setProcessingStep(status)
-          setProcessingProgress(30 + Math.round((page / total) * 40))
+          setProcessingProgress(30 + Math.round((page / total) * 30))
         })
       } else {
-        setProcessingProgress(70)
+        setProcessingProgress(60)
       }
 
+      setProcessingStep('テキスト前処理中...')
+      const fullText = createFullTextStream(pdfPages)
+      setProcessingProgress(75)
+
       setProcessingStep('ノート生成中...')
-      const notePages = generateNotesLocal(pdfPages, 'detailed')
-      setProcessingProgress(90)
+
+      let aiNotes = ''
+      try {
+        aiNotes = await generateNotesWithAI(fullText, (step, progress) => {
+          setProcessingStep(step)
+          setProcessingProgress(75 + Math.round(progress * 0.2))
+        })
+      } catch {}
+
+      if (!aiNotes) {
+        const { generateNotesLocal } = await import('@/services/aiService')
+        const localNotes = generateNotesLocal(pdfPages, 'detailed')
+        aiNotes = localNotes.map(p => p.noteContent).join('\n\n')
+      }
+      setProcessingProgress(95)
+
+      const notePage: NotePage = {
+        pageNumber: 1,
+        originalContent: fullText,
+        noteContent: aiNotes
+      }
 
       const noteDocument: NoteDocument = {
         id: generateId(),
         fileName: file.name,
         totalPages: pdfPages.length,
-        pages: notePages,
+        pages: [notePage],
         createdAt: new Date()
       }
 
       setProcessingProgress(100)
       setProcessingStep('完了')
 
-      sessionStorage.setItem('pdfFile', JSON.stringify({
-        name: file.name,
-        size: file.size,
-        type: file.type
+      const sanitizedPdfPages = pdfPages.map(page => ({
+        pageNumber: page.pageNumber,
+        text: page.text,
+        isOcr: page.isOcr
       }))
-      sessionStorage.setItem('pdfPages', JSON.stringify(pdfPages))
-      sessionStorage.setItem('noteDocument', JSON.stringify(noteDocument))
+
+      try {
+        sessionStorage.setItem('pdfFile', JSON.stringify({
+          name: file.name,
+          size: file.size,
+          type: file.type
+        }))
+        sessionStorage.setItem('pdfPages', JSON.stringify(sanitizedPdfPages))
+        sessionStorage.setItem('noteDocument', JSON.stringify(noteDocument))
+      } catch (storageError) {
+        console.error('Storage quota exceeded:', storageError)
+        setError('データサイズが大きすぎます。小さいPDFファイルをお試しください。')
+        setIsProcessing(false)
+        return
+      }
 
       setTimeout(() => {
         router.push('/notes')

@@ -1,12 +1,11 @@
 'use client'
 
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { Message, PDFPage, NotePage } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Send, Bot, User, Trash2, Sparkles } from 'lucide-react'
+import { Send, Bot, User, Trash2, Sparkles, X } from 'lucide-react'
 import { createMessage, generateQAResponseLocal } from '@/services/aiService'
 
 interface AIChatProps {
@@ -17,6 +16,7 @@ interface AIChatProps {
   currentPage: number
   onSendMessage: (message: string) => void
   onClearMessages: () => void
+  onClose: () => void
 }
 
 export function AIChat({
@@ -26,16 +26,15 @@ export function AIChat({
   notePages,
   currentPage,
   onSendMessage,
-  onClearMessages
+  onClearMessages,
+  onClose
 }: AIChatProps) {
-  const [input, setInput] = useState('')
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const [input, setInput] = React.useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   const handleSend = () => {
@@ -59,27 +58,39 @@ export function AIChat({
   ]
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       <CardHeader className="pb-2 border-b">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             AI アシスタント
           </CardTitle>
-          {messages.length > 0 && (
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClearMessages}
+                title="会話をクリア"
+                className="h-8 w-8"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClearMessages}
-              title="会話をクリア"
+              onClick={onClose}
+              title="閉じる"
+              className="h-8 w-8"
             >
-              <Trash2 className="h-4 w-4" />
+              <X className="h-4 w-4" />
             </Button>
-          )}
+          </div>
         </div>
       </CardHeader>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-4 bg-background">
         {messages.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -149,7 +160,8 @@ export function AIChat({
             )}
           </div>
         )}
-      </ScrollArea>
+        <div ref={messagesEndRef} />
+      </div>
 
       <div className="p-4 border-t">
         <div className="flex gap-2">
