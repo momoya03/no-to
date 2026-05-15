@@ -2,57 +2,65 @@
 
 import React, { useRef, useEffect, useCallback, useState } from 'react'
 
+// Pixel-art dinosaur: 10 columns x 10 rows, each cell = 4x4px = 40x40 total
+const DINO_PIXELS = [
+  [0,0,0,0,0,0,0,1,1,1],
+  [0,0,0,0,0,0,1,1,1,1],
+  [0,0,0,0,0,1,1,1,1,1],
+  [0,0,0,0,1,1,1,1,1,0],
+  [0,0,0,1,1,1,1,1,0,0],
+  [1,0,1,1,1,1,1,0,0,0],
+  [1,1,1,1,1,1,0,0,0,0],
+  [1,1,1,1,1,1,1,0,0,0],
+  [1,0,1,1,0,0,1,0,0,0],
+  [0,0,0,1,1,0,1,0,0,0],
+]
+
 interface Obstacle {
   x: number
   type: 'cactus' | 'bird'
   y: number
-  width: number
-  height: number
+  w: number
+  h: number
 }
 
 export default function DinoGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [score, setScore] = useState(0)
   const [gameOver, setGameOver] = useState(false)
   const [started, setStarted] = useState(false)
+
   const stateRef = useRef({
     dinoY: 0,
     dinoVY: 0,
-    isJumping: false,
+    jumping: false,
     obstacles: [] as Obstacle[],
-    groundOffset: 0,
+    groundOff: 0,
     score: 0,
-    speed: 4,
+    speed: 5,
     frame: 0,
     gameOver: false,
     started: false,
   })
 
-  const CANVAS_W = 640
-  const CANVAS_H = 240
-  const GROUND_Y = 200
+  const W = 640
+  const H = 220
+  const GROUND = 180
+  const CELL = 4
+  const DINO_W = 10 * CELL
+  const DINO_H = 10 * CELL
   const DINO_X = 60
-  const DINO_W = 32
-  const DINO_H = 40
-  const GRAVITY = 0.7
-  const JUMP_VEL = -11
+  const GRAVITY = 0.65
+  const JUMP_V = -10.5
 
-  const jump = useCallback(() => {
+  const trigger = useCallback(() => {
     const s = stateRef.current
     if (s.gameOver) {
-      // restart
-      s.dinoY = 0
-      s.dinoVY = 0
-      s.isJumping = false
-      s.obstacles = []
-      s.speed = 4
-      s.score = 0
-      s.frame = 0
-      s.gameOver = false
-      s.started = true
-      setGameOver(false)
-      setScore(0)
-      setStarted(true)
+      s.dinoY = 0; s.dinoVY = 0; s.jumping = false
+      s.obstacles = []; s.speed = 5; s.score = 0
+      s.frame = 0; s.gameOver = false; s.started = true
+      setGameOver(false); setScore(0); setStarted(true)
       return
     }
     if (!s.started) {
@@ -60,10 +68,15 @@ export default function DinoGame() {
       setStarted(true)
       return
     }
-    if (!s.isJumping) {
-      s.dinoVY = JUMP_VEL
-      s.isJumping = true
+    if (!s.jumping) {
+      s.dinoVY = JUMP_V
+      s.jumping = true
     }
+  }, [])
+
+  // Auto-focus container on mount so keyboard works immediately
+  useEffect(() => {
+    containerRef.current?.focus()
   }, [])
 
   useEffect(() => {
@@ -75,158 +88,149 @@ export default function DinoGame() {
     let animId: number
     let lastSpawn = 0
 
+    // Draw pixel-art dino at jump height y
     const drawDino = (y: number) => {
-      const x = DINO_X
-      const gy = GROUND_Y - DINO_H - y
-      // body
-      ctx.fillStyle = '#374151'
-      ctx.fillRect(x + 4, gy + 4, 24, 28)
-      // head
-      ctx.fillRect(x + 16, gy, 16, 12)
-      ctx.fillStyle = '#1f2937'
-      ctx.fillRect(x + 24, gy, 8, 8)
-      // eye
+      const baseY = GROUND - DINO_H - y
+      const legAlt = stateRef.current.frame % 16 < 8
+      for (let row = 0; row < DINO_PIXELS.length; row++) {
+        for (let col = 0; col < DINO_PIXELS[row].length; col++) {
+          if (!DINO_PIXELS[row][col]) continue
+
+          // running legs: alternate
+          if (row === 8 && col === 1 && legAlt && !stateRef.current.jumping) continue
+          if (row === 9 && col === 3 && !legAlt && !stateRef.current.jumping) continue
+
+          const px = DINO_X + col * CELL + 2
+          const py = baseY + row * CELL + 2
+          ctx.fillStyle = '#000'
+          ctx.fillRect(px, py, CELL, CELL)
+        }
+      }
+      // eye (white dot)
+      const eyeX = DINO_X + 8 * CELL + 2
+      const eyeY = baseY + 1 * CELL + 2
       ctx.fillStyle = '#fff'
-      ctx.fillRect(x + 26, gy + 2, 3, 3)
-      // legs
-      const legPhase = stateRef.current.frame % 20 < 10
-      ctx.fillStyle = '#374151'
-      ctx.fillRect(x + 6, gy + 32, 8, 8)
-      ctx.fillRect(x + 18, gy + 32, 8, legPhase ? 12 : 8)
-      // tail
-      ctx.fillStyle = '#1f2937'
-      ctx.fillRect(x, gy + 16, 6, 6)
+      ctx.fillRect(eyeX, eyeY, CELL, CELL)
     }
 
     const drawCactus = (ox: number) => {
-      const y = GROUND_Y - 30
-      ctx.fillStyle = '#16a34a'
-      // trunk
-      ctx.fillRect(ox + 5, y + 6, 8, 24)
+      ctx.fillStyle = '#000'
+      // main trunk
+      ctx.fillRect(ox + 6, GROUND - 36, 10, 36)
       // left arm
-      ctx.fillRect(ox, y + 12, 6, 6)
-      ctx.fillRect(ox, y, 6, 12)
+      ctx.fillRect(ox, GROUND - 24, 6, 4)
+      ctx.fillRect(ox, GROUND - 36, 4, 16)
       // right arm
-      ctx.fillRect(ox + 11, y + 6, 6, 6)
-      ctx.fillRect(ox + 11, y + 2, 6, 10)
+      ctx.fillRect(ox + 16, GROUND - 18, 6, 4)
+      ctx.fillRect(ox + 18, GROUND - 30, 4, 14)
+      // spikes
+      ctx.fillRect(ox + 6, GROUND - 38, 2, 4)
+      ctx.fillRect(ox + 14, GROUND - 40, 2, 6)
     }
 
     const drawBird = (ox: number, oy: number) => {
-      const wingUp = stateRef.current.frame % 20 < 10
-      ctx.fillStyle = '#dc2626'
+      const wingFlap = stateRef.current.frame % 14 < 7
+      ctx.fillStyle = '#000'
       // body
-      ctx.fillRect(ox + 4, oy + 4, 16, 10)
+      ctx.fillRect(ox + 6, oy + 4, 14, 8)
       // head
       ctx.fillRect(ox + 16, oy, 10, 8)
-      ctx.fillStyle = '#fff'
-      ctx.fillRect(ox + 20, oy + 2, 3, 3)
       // beak
-      ctx.fillStyle = '#fbbf24'
-      ctx.fillRect(ox + 24, oy + 2, 5, 3)
+      ctx.fillRect(ox + 24, oy + 2, 6, 3)
       // wings
-      ctx.fillStyle = '#dc2626'
-      ctx.fillRect(ox + 2, oy + (wingUp ? 0 : 10), 14, 6)
+      if (wingFlap) {
+        ctx.fillRect(ox + 4, oy - 4, 8, 4)
+        ctx.fillRect(ox + 4, oy + 12, 8, 4)
+      } else {
+        ctx.fillRect(ox + 2, oy + 4, 6, 4)
+        ctx.fillRect(ox + 10, oy + 8, 4, 6)
+      }
     }
 
     const drawGround = () => {
-      const off = stateRef.current.groundOffset
-      ctx.fillStyle = '#9ca3af'
-      ctx.fillRect(0, GROUND_Y, CANVAS_W, 2)
-      // ground texture
-      ctx.fillStyle = '#6b7280'
-      for (let i = -off; i < CANVAS_W + off; i += 20) {
-        ctx.fillRect(i, GROUND_Y + 4, 6, 1)
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, GROUND, W, 2)
+      const off = stateRef.current.groundOff
+      for (let i = -off * 3; i < W + 100; i += 16) {
+        ctx.fillRect(i % W, GROUND + 4, 4, 1)
       }
     }
 
     const render = () => {
       const s = stateRef.current
-      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
+      ctx.fillStyle = '#fff'
+      ctx.fillRect(0, 0, W, H)
 
-      // sky bg
-      ctx.fillStyle = '#f3f4f6'
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
-
-      // clouds
-      ctx.fillStyle = '#e5e7eb'
-      ctx.beginPath()
-      ctx.arc(120 - (s.groundOffset * 0.3) % 500, 40, 18, 0, Math.PI * 2)
-      ctx.arc(140 - (s.groundOffset * 0.3) % 500, 32, 14, 0, Math.PI * 2)
-      ctx.arc(100 - (s.groundOffset * 0.3) % 500, 34, 12, 0, Math.PI * 2)
-      ctx.fill()
+      // cloud
+      const cx = 500 - (s.groundOff * 5) % 700
+      ctx.fillStyle = '#ddd'
+      ctx.fillRect(cx, 36, 28, 4)
+      ctx.fillRect(cx + 4, 30, 18, 6)
 
       drawGround()
       drawDino(s.dinoY)
 
-      for (const obs of s.obstacles) {
-        if (obs.type === 'cactus') drawCactus(obs.x)
-        else drawBird(obs.x, obs.y)
+      for (const o of s.obstacles) {
+        if (o.type === 'cactus') drawCactus(o.x)
+        else drawBird(o.x, o.y)
       }
 
       // score
-      ctx.fillStyle = '#374151'
-      ctx.font = 'bold 18px monospace'
-      ctx.fillText(`${Math.floor(s.score)}`, CANVAS_W - 80, 36)
+      ctx.fillStyle = '#000'
+      ctx.font = 'bold 16px monospace'
+      ctx.fillText(`${Math.floor(s.score)}`, W - 70, 32)
+
+      if (s.gameOver) {
+        ctx.fillStyle = '#000'
+        ctx.font = 'bold 14px monospace'
+        ctx.fillText('GAME OVER', W / 2 - 40, H / 2 - 10)
+      }
     }
 
     const update = () => {
       const s = stateRef.current
-      if (s.gameOver || !s.started) return
+      if (!s.started || s.gameOver) return
 
       s.frame++
-      s.groundOffset = (s.groundOffset + s.speed) % 40
-      s.score += s.speed * 0.15
-      s.speed = 4 + Math.floor(s.score / 200) * 0.8
+      s.groundOff = (s.groundOff + s.speed * 0.3) % 40
+      s.score += s.speed * 0.12
+      s.speed = 5 + Math.floor(s.score / 200) * 0.7
 
-      // dino physics
-      if (s.isJumping) {
+      if (s.jumping) {
         s.dinoY += s.dinoVY
         s.dinoVY += GRAVITY
-        if (s.dinoY <= 0) {
-          s.dinoY = 0
-          s.dinoVY = 0
-          s.isJumping = false
-        }
+        if (s.dinoY <= 0) { s.dinoY = 0; s.dinoVY = 0; s.jumping = false }
       }
 
-      // spawn obstacles
       lastSpawn += s.speed
-      const spawnGap = Math.max(60, 160 - s.speed * 4)
-      if (lastSpawn > spawnGap) {
+      const gap = Math.max(70, 180 - s.speed * 5)
+      if (lastSpawn > gap) {
         lastSpawn = 0
-        const type: 'cactus' | 'bird' = Math.random() < 0.7 ? 'cactus' : 'bird'
-        if (type === 'cactus') {
-          s.obstacles.push({ x: CANVAS_W, type: 'cactus', y: 0, width: 20, height: 30 })
+        const kind: 'cactus' | 'bird' = Math.random() < 0.65 ? 'cactus' : 'bird'
+        if (kind === 'cactus') {
+          s.obstacles.push({ x: W, type: 'cactus', y: 0, w: 24, h: 40 })
         } else {
-          const birdY = GROUND_Y - DINO_H - 10 - Math.random() * 40
-          s.obstacles.push({ x: CANVAS_W, type: 'bird', y: birdY, width: 30, height: 14 })
+          const by = GROUND - DINO_H + 6 - Math.random() * 36
+          s.obstacles.push({ x: W, type: 'bird', y: by, w: 32, h: 16 })
         }
       }
 
-      // move obstacles
-      for (const obs of s.obstacles) {
-        obs.x -= s.speed
-      }
+      for (const o of s.obstacles) o.x -= s.speed
       s.obstacles = s.obstacles.filter(o => o.x > -60)
 
-      // collision detection
-      const dinoLeft = DINO_X + 4
-      const dinoRight = DINO_X + DINO_W - 4
-      const dinoTop = GROUND_Y - DINO_H - s.dinoY
-      const dinoBottom = GROUND_Y - s.dinoY
+      // collision
+      const dl = DINO_X + 4
+      const dr = DINO_X + DINO_W - 6
+      const dt = GROUND - DINO_H - s.dinoY + 4
+      const db = GROUND - s.dinoY - 4
 
-      for (const obs of s.obstacles) {
-        const oLeft = obs.x
-        const oRight = obs.x + obs.width
-        const oTop = obs.type === 'cactus' ? GROUND_Y - obs.height : obs.y
-        const oBottom = obs.type === 'cactus' ? GROUND_Y : obs.y + obs.height
+      for (const o of s.obstacles) {
+        const ol = o.x + 3
+        const or = o.x + o.w - 3
+        const ot = o.type === 'cactus' ? GROUND - o.h : o.y + 2
+        const ob = o.type === 'cactus' ? GROUND : o.y + o.h - 2
 
-        if (
-          dinoRight > oLeft + 4 &&
-          dinoLeft < oRight - 4 &&
-          dinoBottom > oTop + 4 &&
-          dinoTop < oBottom - 4
-        ) {
+        if (dr > ol && dl < or && db > ot && dt < ob) {
           s.gameOver = true
           setGameOver(true)
           break
@@ -242,31 +246,28 @@ export default function DinoGame() {
       animId = requestAnimationFrame(loop)
     }
     animId = requestAnimationFrame(loop)
-
     return () => cancelAnimationFrame(animId)
   }, [])
 
-  // Keyboard
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
-        e.preventDefault()
-        jump()
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [jump])
-
   return (
-    <div className="select-none">
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      className="outline-none select-none"
+      onKeyDown={(e) => {
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+          e.preventDefault()
+          trigger()
+        }
+      }}
+    >
       <canvas
         ref={canvasRef}
-        width={CANVAS_W}
-        height={CANVAS_H}
-        className="w-full max-w-[640px] rounded-lg border border-border bg-gray-100 dark:bg-gray-800 cursor-pointer mx-auto block"
-        onClick={jump}
-        onTouchStart={(e) => { e.preventDefault(); jump() }}
+        width={W}
+        height={H}
+        className="w-full max-w-[640px] rounded-lg border border-black bg-white cursor-pointer mx-auto block"
+        onClick={trigger}
+        onTouchStart={(e) => { e.preventDefault(); trigger() }}
       />
       {!started && !gameOver && (
         <p className="text-center text-xs text-muted-foreground mt-2">
