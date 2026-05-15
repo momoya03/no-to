@@ -140,51 +140,48 @@ async function generateNotesWithAI(
 ): Promise<string> {
   onProgress('AIによるノート生成中...', 0)
 
-  if (!GEMINI_KEY) {
+  // Try Gemini client-side first, fall back to server API route
+  if (GEMINI_KEY) {
     try {
-      const response = await fetch('/api/generate-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: fullText })
-      })
+      const SYSTEM_PROMPT = buildSystemPrompt(pdfLang, noteLang)
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${fullText.slice(0, 40000)}` }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+          })
+        }
+      )
       if (response.ok) {
         const data = await response.json()
-        if (data.notes) return data.notes
-        console.warn('[quota] APIがnotesを返しませんでした:', data)
-      } else {
-        console.warn('[quota] APIエラー ステータス:', response.status)
+        const notes = data.candidates?.[0]?.content?.parts?.[0]?.text
+        if (notes) return notes
       }
+      console.warn('[quota] Gemini client-side failed, falling back to server API')
     } catch (e) {
-      console.warn('[quota] API呼び出しに失敗:', e)
+      console.warn('[quota] Gemini client-side error:', e)
     }
-    return ''
   }
 
+  // Fall back to server API route
   try {
-    const SYSTEM_PROMPT = buildSystemPrompt(pdfLang, noteLang)
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${fullText.slice(0, 40000)}` }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-        })
-      }
-    )
-
+    const response = await fetch('/api/generate-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: fullText })
+    })
     if (response.ok) {
       const data = await response.json()
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      if (data.notes) return data.notes
     }
-
-    return ''
-  } catch (error) {
-    console.error('AI generation error:', error)
-    return ''
+    console.warn('[quota] Server API returned no notes')
+  } catch (e) {
+    console.warn('[quota] Server API error:', e)
   }
+  return ''
 }
 
 export default function Home() {
