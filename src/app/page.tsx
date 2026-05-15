@@ -41,8 +41,9 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 1. タイトルと基本情報
 2. 全体構成（目次）
 3. セクションごとの重要ポイント
-4. 重要キーワード一覧
-5. 自己テスト問題3問（模範解答付き）`,
+4. 自己テスト問題3問（模範解答付き）
+
+【難解用語】特に難しい専門用語や特殊な読み方の漢字には、直後に（注：簡潔な説明or読み方）を付けてください。多用せず、本当に難しいものだけに。`,
       output: '以下の資料テキストを解析し、学習ノートを生成してください：',
     },
     zh: {
@@ -61,8 +62,9 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 1. 标题与基本信息
 2. 整体结构（目录）
 3. 各章节重点
-4. 重要关键词一览
-5. 自测题3道（附参考答案）`,
+4. 自测题3道（附参考答案）
+
+【难解术语】特别难的专业术语或罕见汉字，在其后添加（注：简要说明）。不要多用，仅在真正难解处。`,
       output: '请解析以下资料文本，生成学习笔记：',
     },
     en: {
@@ -81,8 +83,9 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 1. Title & basic info
 2. Table of contents
 3. Key points per section
-4. Important keywords list
-5. 3 self-test questions (with model answers)`,
+4. 3 self-test questions (with model answers)
+
+【Difficult Terms】For particularly difficult technical terms or rare readings, add (注：brief explanation) right after. Use sparingly — only for truly difficult items.`,
       output: 'Analyze the following document and generate study notes:',
     },
     ko: {
@@ -101,8 +104,9 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 1. 제목과 기본 정보
 2. 전체 구성(목차)
 3. 섹션별 중요 포인트
-4. 중요 키워드 목록
-5. 자가 테스트 문제 3문(모범 답안 포함)`,
+4. 자가 테스트 문제 3문(모범 답안 포함)
+
+【어려운 용어】특히 어려운 전문 용어나 특수 읽기의 한자에는 바로 뒤에 (注：간결한 설명이나 읽기)를 붙여 주세요. 과도하게 사용하지 말고 정말 어려운 것만.`,
       output: '다음 자료 텍스트를 분석하여 학습 노트를 생성해 주세요:',
     },
   }

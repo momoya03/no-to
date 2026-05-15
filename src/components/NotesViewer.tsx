@@ -3,6 +3,7 @@
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import { NoteDocument } from '@/types'
 import { Button } from '@/components/ui/button'
 import { FileText, Copy, Download } from 'lucide-react'
@@ -84,9 +85,15 @@ export function NotesViewer({
   }
 
   const renderNoteContent = (content: string) => {
+    // Wrap annotations in light-blue styled spans
+    const processed = content.replace(
+      /（注：[^）]*）/g,
+      '<span class="text-sky-400 dark:text-sky-300 font-medium">$&</span>'
+    )
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
         components={{
           h1: ({ children, ...props }) => (
             <h1
