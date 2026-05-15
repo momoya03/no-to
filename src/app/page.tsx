@@ -156,55 +156,52 @@ async function generateNotesWithAI(
 ): Promise<string> {
   onProgress('AIによるノート生成中...', 0)
 
-  // Split long text into chunks for comprehensive processing
-  const chunks = splitText(fullText, 25000)
-  const allNotes: string[] = []
+  // Step 1: Pre-extract key content locally (avoids Vercel timeout)
+  onProgress('重要ポイントを抽出中...', 10)
+  const { buildContentSummary, extractAutoKeyTerms } = await import('@/services/aiService')
+  const summary = buildContentSummary(fullText.split('\n'))
+  const terms = extractAutoKeyTerms(fullText)
 
-  for (let i = 0; i < chunks.length; i++) {
-    onProgress(`AI生成中 (${i + 1}/${chunks.length})...`, Math.round((i / chunks.length) * 80))
+  // Step 2: Build compact prompt with pre-extracted content
+  const compactPrompt = `【資料の重要ポイント抜粋】\n${summary}\n\n【重要キーワード】\n${terms.join('、')}\n\n上記の内容から完全な学習ノートを作成してください。`
 
-    const chunkPrompt = chunks.length === 1
-      ? `以下の資料を解析し学習ノートを作成してください：\n\n${chunks[i]}`
-      : `以下の資料のパート${i + 1}/${chunks.length}を解析し学習ノートを作成してください：\n\n${chunks[i]}`
+  // Step 3: Send compact prompt to AI
+  let notes = ''
 
-    // Try client-side Gemini first
-    if (GEMINI_KEY) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `${buildSystemPrompt(pdfLang, noteLang)}\n\n${chunkPrompt}` }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-            })
-          }
-        )
-        if (response.ok) {
-          const data = await response.json()
-          const notes = data.candidates?.[0]?.content?.parts?.[0]?.text
-          if (notes) { allNotes.push(notes); continue }
-        }
-      } catch {}
-    }
-
-    // Fall back to server API
+  if (GEMINI_KEY) {
     try {
-      const response = await fetch('/api/generate-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: chunkPrompt })
-      })
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${buildSystemPrompt(pdfLang, noteLang)}\n\n${compactPrompt}` }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+          })
+        }
+      )
       if (response.ok) {
         const data = await response.json()
-        if (data.notes) allNotes.push(data.notes)
+        notes = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
       }
     } catch {}
   }
 
-  if (allNotes.length > 0) return allNotes.join('\n\n---\n\n')
-  return ''
+  if (!notes) {
+    try {
+      const response = await fetch('/api/generate-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: compactPrompt })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        notes = data.notes || ''
+      }
+    } catch {}
+  }
+
+  return notes
 }
 
 export default function Home() {

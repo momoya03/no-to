@@ -278,7 +278,7 @@ function splitIntoSections(lines: string[]): Array<{ heading: string; content: s
   return sections
 }
 
-function extractAutoKeyTerms(text: string): string[] {
+export function extractAutoKeyTerms(text: string): string[] {
   const terms = new Map<string, number>()
 
   const kanjiCompounds = text.match(/[一-鿿]{2,5}/g)
@@ -362,7 +362,7 @@ function extractKeySentences(text: string, maxCount: number = 6): string[] {
   return top.sort((a, b) => text.indexOf(a) - text.indexOf(b))
 }
 
-function buildContentSummary(lines: string[]): string {
+export function buildContentSummary(lines: string[]): string {
   const sections = splitIntoSections(lines)
   if (sections.length === 0) return ''
 
