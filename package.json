@@ -39,6 +39,7 @@
     "@upstash/redis": "^1.38.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.344.0",
     "mammoth": "^1.12.0",
