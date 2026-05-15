@@ -48,7 +48,20 @@ async function convert(
   XLSX.utils.book_append_sheet(wb, ws, 'PDF Content')
   const blob = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
 
-  return { blob: new Blob([blob]), fileName: file.name.replace(/\.pdf$/i, '.xlsx') }
+  // Preview: render first rows to canvas
+  const previewCanvas = document.createElement('canvas')
+  previewCanvas.width = 842; previewCanvas.height = 595
+  const pctx = previewCanvas.getContext('2d')!
+  pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, 842, 595)
+  pctx.fillStyle = '#000'
+  pctx.font = '11px "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif'
+  for (let i = 0; i < Math.min(rows.length, 45); i++) {
+    const row = rows[i].join('  ').slice(0, 130)
+    if (row) pctx.fillText(row, 20, 20 + (i+1)*12)
+  }
+  const previewUrls = [previewCanvas.toDataURL('image/jpeg', 0.7)]
+
+  return { blob: new Blob([blob]), fileName: file.name.replace(/\.pdf$/i, '.xlsx'), previewUrls }
 }
 
 export const pdfToExcel: Converter = {

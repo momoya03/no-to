@@ -12,6 +12,7 @@ async function convert(
 
   onProgress('PDFを生成中...', 40)
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+  let firstCanvas: HTMLCanvasElement | null = null
 
   const sheetNames = wb.SheetNames
   for (let si = 0; si < sheetNames.length; si++) {
@@ -35,6 +36,7 @@ async function convert(
 
     canvas.width = margin*2 + cols*colW
     canvas.height = margin*2 + (rows+1)*rowH
+    if (!firstCanvas) firstCanvas = canvas
     const ctx = canvas.getContext('2d')!
     ctx.fillStyle = '#fff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -69,7 +71,10 @@ async function convert(
   }
 
   const blob = doc.output('blob')
-  return { blob, fileName: file.name.replace(/\.xlsx?$/i, '.pdf') }
+  const previewUrls = firstCanvas
+    ? [firstCanvas.toDataURL('image/jpeg', 0.7)]
+    : undefined
+  return { blob, fileName: file.name.replace(/\.xlsx?$/i, '.pdf'), previewUrls }
 }
 
 export const excelToPdf: Converter = {

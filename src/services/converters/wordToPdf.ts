@@ -55,7 +55,19 @@ async function convert(
   }
 
   const blob = doc.output('blob')
-  return { blob, fileName: file.name.replace(/\.docx?$/i, '.pdf') }
+
+  // Preview: render first page of text
+  const previewCanvas = document.createElement('canvas')
+  previewCanvas.width = 842; previewCanvas.height = 595
+  const pctx = previewCanvas.getContext('2d')!
+  pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, 842, 595)
+  pctx.fillStyle = '#000'
+  pctx.font = '12px "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif'
+  const firstLines = lines.slice(0, 30)
+  firstLines.forEach((l, i) => pctx.fillText(l, 20, 20 + (i+1)*18))
+  const previewUrls = [previewCanvas.toDataURL('image/jpeg', 0.7)]
+
+  return { blob, fileName: file.name.replace(/\.docx?$/i, '.pdf'), previewUrls }
 }
 
 export const wordToPdf: Converter = {

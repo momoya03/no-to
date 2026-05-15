@@ -7,9 +7,6 @@ import { pdfToExcel } from './pdfToExcel'
 import { excelToPdf } from './excelToPdf'
 import { pdfToImage } from './pdfToImage'
 import { imageToPdf } from './imageToPdf'
-import { pdfToCad } from './pdfToCad'
-import { cadToPdf } from './cadToPdf'
-
 export const ALL_CONVERTERS: Converter[] = [
   pdfToWord,
   wordToPdf,
@@ -19,8 +16,6 @@ export const ALL_CONVERTERS: Converter[] = [
   excelToPdf,
   pdfToImage,
   imageToPdf,
-  pdfToCad,
-  cadToPdf,
 ]
 
 export function findConverter(from: string, to: string): Converter | undefined {

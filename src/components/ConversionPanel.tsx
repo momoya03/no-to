@@ -13,7 +13,6 @@ const FROM_FORMATS = [
   { ext: 'pptx', label: 'PowerPoint (.pptx)' },
   { ext: 'xlsx', label: 'Excel (.xlsx)' },
   { ext: 'image', label: '画像 (.png/.jpg)' },
-  { ext: 'dxf', label: 'CAD (.dxf)' },
 ]
 
 const TO_FORMATS = [
@@ -22,7 +21,6 @@ const TO_FORMATS = [
   { ext: 'pptx', label: 'PowerPoint (.pptx)' },
   { ext: 'xlsx', label: 'Excel (.xlsx)' },
   { ext: 'image', label: '画像 (.png)' },
-  { ext: 'dxf', label: 'CAD (.dxf)' },
 ]
 
 type Status = 'idle' | 'converting' | 'preview' | 'done' | 'error'
@@ -126,14 +124,6 @@ export default function ConversionPanel() {
           </select>
         </div>
 
-        {/* Unavailable notice */}
-        {converter && !converter.available && (
-          <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-2.5">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            <span>{converter.unavailableReason}</span>
-          </div>
-        )}
-
         {/* Error from previous run */}
         {status === 'error' && (
           <div className="space-y-2">
@@ -148,7 +138,7 @@ export default function ConversionPanel() {
         )}
 
         {/* Upload button / progress */}
-        {(status === 'idle' || status === 'error') && converter?.available && (
+        {(status === 'idle' || status === 'error') && (
           <div className="flex flex-col gap-2">
             <input ref={fileInputRef} type="file" accept={acceptStr}
               onChange={handleFileChange} className="hidden" id="conversion-input"
