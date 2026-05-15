@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis'
 
 const redis = Redis.fromEnv()
-const DAILY_LIMIT = 1500
+const DAILY_LIMIT = 2000
 
 function getTodayKey(): string {
   return `quota:${new Date().toISOString().slice(0, 10)}`
