@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useState } from 'react'
-import { Upload, File, X, ArrowUp } from 'lucide-react'
+import { Upload, File, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatFileSize } from '@/lib/utils'
@@ -55,11 +55,11 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
   return (
     <div className="w-full">
       <Card className={cn(
-        "border-2 border-dashed transition-all duration-200 cursor-pointer",
-        isDragging ? "border-primary bg-primary/5 scale-[1.02]" : "border-border hover:border-primary/40 hover:bg-muted/30",
+        "border-2 border-dashed transition-all duration-200",
+        isDragging ? "border-primary bg-primary/5 scale-[1.02]" : "border-border hover:border-primary/30 hover:bg-muted/20",
         disabled && "opacity-50 cursor-not-allowed"
       )}>
-        <CardContent className="p-8">
+        <CardContent className="p-0">
           {!selectedFile ? (
             <div
               onDragOver={handleDragOver}
@@ -67,13 +67,6 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
               onDrop={handleDrop}
               className="flex flex-col items-center justify-center text-center"
             >
-              <div className="w-20 h-20 mb-5 rounded-2xl bg-primary/10 flex items-center justify-center relative group-hover:bg-primary/20 transition-colors">
-                <Upload className="w-9 h-9 text-primary" />
-              </div>
-              <p className="text-lg font-semibold mb-1">PDFをアップロード</p>
-              <p className="text-sm text-muted-foreground mb-5">
-                クリックまたはドラッグ＆ドロップ
-              </p>
               <input
                 type="file"
                 accept=".pdf,application/pdf"
@@ -82,16 +75,27 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
                 id="file-upload"
                 disabled={disabled}
               />
-              <Button asChild disabled={disabled} size="lg" className="rounded-full px-6">
-                <label htmlFor="file-upload" className="cursor-pointer flex items-center gap-2">
-                  <ArrowUp className="h-4 w-4" />
-                  ファイルを選択
-                </label>
-              </Button>
+
+              {/* Full-area clickable upload button */}
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer w-full flex flex-col items-center py-12 px-6"
+              >
+                <div className="w-24 h-24 mb-5 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                  <Upload className="w-11 h-11 text-primary" />
+                </div>
+                <div className="bg-primary text-primary-foreground rounded-full px-8 py-3.5 text-base font-bold inline-flex items-center gap-2.5 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all active:scale-95">
+                  <Upload className="h-5 w-5" />
+                  PDF を選択
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  ドラッグ＆ドロップでも追加できます
+                </p>
+              </label>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+            <div className="flex items-center justify-between p-6">
+              <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <File className="w-6 h-6 text-primary" />
                 </div>
@@ -109,7 +113,6 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
                 size="icon"
                 onClick={handleClear}
                 disabled={disabled}
-                className="rounded-full"
               >
                 <X className="w-5 h-5" />
               </Button>
