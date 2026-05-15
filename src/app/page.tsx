@@ -255,11 +255,13 @@ export default function Home() {
       setProcessingStep('ノートを整形中...')
       await new Promise(r => setTimeout(r, 300))
 
+      let aiUsed = false
       if (!aiNotes) {
         const { generateNotesLocal } = await import('@/services/aiService')
         const localNotes = generateNotesLocal(pdfPages)
         aiNotes = localNotes.map(p => p.noteContent).join('\n\n')
       } else {
+        aiUsed = true
         setQuota(await incrementQuota())
       }
       setProcessingProgress(100)
@@ -278,6 +280,8 @@ export default function Home() {
         pages: [notePage],
         createdAt: new Date()
       }
+
+      sessionStorage.setItem('aiUsed', JSON.stringify(aiUsed))
 
       const sanitizedPdfPages = pdfPages.map(page => ({
         pageNumber: page.pageNumber,

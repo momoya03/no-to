@@ -26,6 +26,7 @@ export default function NotesPage() {
   })
 
   const [mounted, setMounted] = useState(false)
+  const [aiUsed, setAiUsed] = useState<boolean | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -39,6 +40,9 @@ export default function NotesPage() {
         const pdfPages: PDFPage[] = JSON.parse(pdfPagesData)
         const noteDocument: NoteDocument = JSON.parse(noteDocumentData)
         noteDocument.createdAt = new Date(noteDocument.createdAt)
+
+        const aiUsedData = sessionStorage.getItem('aiUsed')
+        if (aiUsedData) setAiUsed(JSON.parse(aiUsedData))
 
         setState(prev => ({
           ...prev,
@@ -159,6 +163,17 @@ export default function NotesPage() {
           </div>
         </div>
       </header>
+
+      {aiUsed === false && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/30 border-b border-yellow-200 dark:border-yellow-800 px-4 py-2 text-center text-sm text-yellow-700 dark:text-yellow-400">
+          AI生成に失敗したため、簡易生成モードで表示しています。管理者にお問い合わせください。
+        </div>
+      )}
+      {aiUsed === true && (
+        <div className="bg-green-50 dark:bg-green-950/30 border-b border-green-200 dark:border-green-800 px-4 py-2 text-center text-sm text-green-700 dark:text-green-400">
+          AI生成モード
+        </div>
+      )}
 
       <main className="flex-1 overflow-hidden">
         <div className="w-full h-full overflow-hidden">
