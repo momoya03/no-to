@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/FileUpload'
 import { ProcessingIndicator } from '@/components/ProcessingIndicator'
-import DogFrisbee from '@/components/DogFrisbee'
+import LoadingAnimation from '@/components/LoadingAnimation'
 import ConversionPanel from '@/components/ConversionPanel'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -419,7 +419,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="space-y-4">
-              <DogFrisbee />
+              <LoadingAnimation />
               <ProcessingIndicator
                 step={processingStep}
                 progress={processingProgress}
