@@ -4,9 +4,9 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/FileUpload'
 import { ProcessingIndicator } from '@/components/ProcessingIndicator'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Moon, Sun, FileText, Sparkles, Scan, Download } from 'lucide-react'
+import { Moon, Sun, FileText, Sparkles } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { createFullTextStream } from '@/services/aiService'
 import { extractPDFText } from '@/services/pdfService'
@@ -287,143 +287,81 @@ export default function Home() {
     }
   }, [router, pdfLang, noteLang])
 
-  const features = [
-    {
-      icon: FileText,
-      title: 'PDF アップロード',
-      description: 'クリックまたはドラッグ＆ドロップで簡単にPDFをアップロード'
-    },
-    {
-      icon: Scan,
-      title: 'OCR 対応',
-      description: '画像PDFやスキャン資料も日本語OCRで文字認識'
-    },
-    {
-      icon: Sparkles,
-      title: 'ノート自動生成',
-      description: 'ページごとに整理された学習ノートを自動作成'
-    },
-    {
-      icon: Download,
-      title: 'エクスポート',
-      description: 'PDFやTXT形式で保存、印刷も可能'
-    }
-  ]
-
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
-            PDF ノートメーカー
-          </h1>
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-muted/20">
+      <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <h1 className="text-xl font-semibold tracking-tight">garood</h1>
           <Button
             variant="ghost"
             size="icon"
+            className="rounded-full"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              日本語 PPT から<br />学習ノートを自動生成
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              授業資料をアップロードするだけで、整理されたノートが作成できます
-            </p>
-          </div>
-
-          <div className="flex justify-center mb-4">
-            <div className="inline-flex items-center gap-4 px-5 py-3 bg-muted/30 rounded-xl border">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground whitespace-nowrap">PDF言語</span>
-              </div>
-              <select
-                value={pdfLang}
-                onChange={(e) => setPdfLang(e.target.value)}
-                className="text-sm bg-background border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
-              >
-                {Object.entries(LANG_OPTIONS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-              <span className="text-muted-foreground">→</span>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground whitespace-nowrap">ノート言語</span>
-              </div>
-              <select
-                value={noteLang}
-                onChange={(e) => setNoteLang(e.target.value)}
-                className="text-sm bg-background border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
-              >
-                {Object.entries(LANG_OPTIONS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-3 px-5 py-3 bg-muted/50 rounded-xl border">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">AI 変換枠</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-28 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (quota.count / 1500) * 100)}%` }}
-                  />
-                </div>
-                <span className="text-sm font-mono tabular-nums">
-                  <span className="font-bold">{1500 - quota.count}</span>
-                  <span className="text-muted-foreground">/1500</span>
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                残り約<span className="font-semibold text-foreground">{1500 - quota.count}</span>回変換可能
-              </span>
-            </div>
-          </div>
-
+      <main className="flex-1 container mx-auto px-4 py-12 sm:py-20">
+        <div className="max-w-xl mx-auto">
           {!isProcessing ? (
             <div className="space-y-8">
+              <div className="text-center mb-2">
+                <p className="text-sm text-muted-foreground tracking-wide">
+                  PDF から学習ノートを自動生成
+                </p>
+              </div>
+
               <FileUpload onFileSelect={handleFileSelect} />
+
+              {/* Language + Quota — compact row */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-3 w-3" />
+                  <select
+                    value={pdfLang}
+                    onChange={(e) => setPdfLang(e.target.value)}
+                    className="text-xs bg-transparent border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    {Object.entries(LANG_OPTIONS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                  <span>→</span>
+                  <select
+                    value={noteLang}
+                    onChange={(e) => setNoteLang(e.target.value)}
+                    className="text-xs bg-transparent border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    {Object.entries(LANG_OPTIONS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+                <span className="hidden sm:inline">·</span>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-3 w-3" />
+                  <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary/60 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, (quota.count / 1500) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="font-mono tabular-nums">
+                    <span className="font-medium text-foreground">{1500 - quota.count}</span>
+                    <span>/1500</span>
+                  </span>
+                </div>
+              </div>
 
               {error && (
                 <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-                  <CardContent className="p-4 text-red-600 dark:text-red-400">
+                  <CardContent className="p-4 text-sm text-red-600 dark:text-red-400">
                     {error}
                   </CardContent>
                 </Card>
               )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
-                {features.map((feature, i) => (
-                  <Card key={i}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <feature.icon className="h-5 w-5 text-primary" />
-                        </div>
-                        <CardTitle className="text-lg">{feature.title}</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription>{feature.description}</CardDescription>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             </div>
           ) : (
             <ProcessingIndicator
@@ -434,10 +372,8 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t py-6">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>PDF ノートメーカー - 授業ノート作成をサポート</p>
-        </div>
+      <footer className="py-6 text-center text-xs text-muted-foreground/60">
+        garood
       </footer>
     </div>
   )
