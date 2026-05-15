@@ -77,60 +77,6 @@ export function NotesViewer({
     setTimeout(() => setAnimating(false), 250)
   }
 
-  const highlightImportantNumbers = (text: string): React.ReactNode[] => {
-    const parts: React.ReactNode[] = []
-    let lastIndex = 0
-    const regex = /(～|≈|約|约)?(\d+(?:\.\d+)?)([点年月日円万円億兆%kmkg人社回頁ページptcmmm倍割千百十])?/g
-    let match
-
-    while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(text.slice(lastIndex, match.index))
-      }
-
-      const hasPrefix = !!match[1]
-      const numberStr = match[2]
-      const hasUnit = !!match[3]
-      const isLargeNumber = numberStr.replace(/[,.]/g, '').length >= 3
-
-      if ((hasPrefix || hasUnit || isLargeNumber) && !/1949|1978/.test(match[0])) {
-        parts.push(
-          <span
-            key={match.index}
-            className="bg-yellow-200 dark:bg-yellow-800 px-1.5 py-0.5 rounded-md font-semibold text-yellow-900 dark:text-yellow-100"
-          >
-            {match[0]}
-          </span>
-        )
-      } else {
-        parts.push(match[0])
-      }
-
-      lastIndex = match.index + match[0].length
-    }
-
-    if (lastIndex < text.length) {
-      parts.push(text.slice(lastIndex))
-    }
-
-    return parts
-  }
-
-  const highlightChildren = (children: React.ReactNode): React.ReactNode => {
-    if (typeof children === 'string') {
-      const result = highlightImportantNumbers(children)
-      return result.length === 0 ? children : result
-    }
-    if (Array.isArray(children)) {
-      return children.map((child, i) =>
-        typeof child === 'string'
-          ? <React.Fragment key={i}>{highlightImportantNumbers(child)}</React.Fragment>
-          : child
-      )
-    }
-    return children
-  }
-
   const renderMarkdown = (content: string) => {
     const processed = content.replace(
       /（注：[^）]*）/g,
@@ -141,37 +87,25 @@ export function NotesViewer({
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
         components={{
-          h1: ({ children, ...props }) => (
-            <h1 className="text-3xl font-bold mt-10 mb-6 text-gray-900 dark:text-gray-100 border-b-2 border-primary/30 pb-3" {...props}>
-              {highlightChildren(children)}
-            </h1>
+          h1: ({ ...props }) => (
+            <h1 className="text-3xl font-bold mt-10 mb-6 text-gray-900 dark:text-gray-100 border-b-2 border-primary/30 pb-3" {...props} />
           ),
-          h2: ({ children, ...props }) => (
-            <h2 className="text-2xl font-semibold mt-8 mb-4 text-gray-800 dark:text-gray-200 border-l-4 border-primary pl-4" {...props}>
-              {highlightChildren(children)}
-            </h2>
+          h2: ({ ...props }) => (
+            <h2 className="text-2xl font-semibold mt-8 mb-4 text-gray-800 dark:text-gray-200 border-l-4 border-primary pl-4" {...props} />
           ),
-          h3: ({ children, ...props }) => (
-            <h3 className="text-xl font-medium mt-6 mb-3 text-gray-700 dark:text-gray-300" {...props}>
-              {highlightChildren(children)}
-            </h3>
+          h3: ({ ...props }) => (
+            <h3 className="text-xl font-medium mt-6 mb-3 text-gray-700 dark:text-gray-300" {...props} />
           ),
-          h4: ({ children, ...props }) => (
-            <h4 className="text-lg font-medium mt-5 mb-2 text-gray-600 dark:text-gray-400" {...props}>
-              {highlightChildren(children)}
-            </h4>
+          h4: ({ ...props }) => (
+            <h4 className="text-lg font-medium mt-5 mb-2 text-gray-600 dark:text-gray-400" {...props} />
           ),
-          p: ({ children, ...props }) => (
-            <p className="mb-4 leading-8 tracking-wide text-gray-700 dark:text-gray-300" {...props}>
-              {highlightChildren(children)}
-            </p>
+          p: ({ ...props }) => (
+            <p className="mb-4 leading-8 tracking-wide text-gray-700 dark:text-gray-300" {...props} />
           ),
           ul: ({ ...props }) => <ul className="list-disc pl-8 mb-4 space-y-2" {...props} />,
           ol: ({ ...props }) => <ol className="list-decimal pl-8 mb-4 space-y-2" {...props} />,
-          li: ({ children, ...props }) => (
-            <li className="leading-8 text-gray-700 dark:text-gray-300" {...props}>
-              {highlightChildren(children)}
-            </li>
+          li: ({ ...props }) => (
+            <li className="leading-8 text-gray-700 dark:text-gray-300" {...props} />
           ),
           blockquote: ({ ...props }) => (
             <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-4 py-1 my-3 text-gray-600 dark:text-gray-400" {...props} />
@@ -193,18 +127,16 @@ export function NotesViewer({
           pre: ({ ...props }) => <pre className="bg-gray-50 dark:bg-gray-800/50 p-4 my-3 overflow-x-auto" {...props} />,
           table: ({ ...props }) => <div className="my-4 overflow-x-auto"><table className="w-full border-collapse" {...props} /></div>,
           thead: ({ ...props }) => <thead className="border-b border-gray-300 dark:border-gray-600" {...props} />,
-          th: ({ children, ...props }) => (
-            <th className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700" {...props}>
-              {highlightChildren(children)}
-            </th>
+          th: ({ ...props }) => (
+            <th className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700" {...props} />
           ),
-          td: ({ children, ...props }) => (
-            <td className="px-4 py-2 text-gray-700 dark:text-gray-300" {...props}>
-              {highlightChildren(children)}
-            </td>
+          td: ({ ...props }) => (
+            <td className="px-4 py-2 text-gray-700 dark:text-gray-300" {...props} />
           ),
           hr: ({ ...props }) => <hr className="my-6 border-t border-gray-200 dark:border-gray-700" {...props} />,
-          strong: ({ ...props }) => <strong className="font-bold text-primary" {...props} />,
+          strong: ({ ...props }) => (
+            <strong className="bg-yellow-200 dark:bg-yellow-800/50 text-yellow-900 dark:text-yellow-100 px-1 py-0.5 rounded font-bold" {...props} />
+          ),
           em: ({ ...props }) => <em className="italic text-gray-600 dark:text-gray-400" {...props} />,
           input: ({ ...props }) => (
             <input className="mr-3 h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-600 focus:ring-primary" type="checkbox" {...props} />
