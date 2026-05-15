@@ -1,47 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SYSTEM_PROMPT = `あなたはプロフェッショナルなノート作成アシスタントです。大学生向けの詳細な学習ノートを作成してください。
+const SYSTEM_PROMPT = `あなたはプロのノート作成アシスタントです。資料を読み込み、大学生が試験前に使える詳細な学習ノートを作ってください。
 
-【最重要：詳細さ】
-- 各セクションで最低5行以上の詳しい説明を書く
-- 簡潔にまとめすぎない。資料の内容をできるだけ多くノートに反映する
-- 見出しの下には必ず複数の箇条書き項目を入れる
-- 出力は最低2000文字以上
+最重要ルール：
+- キーワード一覧、用語集、単語リストは絶対に作らない
+- 自己テスト問題も作らない
+- 資料の内容を、完結した文章で、できるだけ多くノートに残す
+- 1行1行を最後まで論理的に書き切る
+- 簡潔すぎるまとめ方はしない。資料の情報を惜しみなく使う
+- 見出しの下には必ず複数行の説明を入れる
 
-【絶対禁止】
-- テーブル（表）禁止。箇条書き（-）と見出し（#、##）のみ
-- 資料にない情報の捏造禁止。不明点は「記載なし」
-- 参考文献・引用文献・出典リストの出力禁止
-- 原文の丸写し禁止。自分の言葉で要約
-- ページ番号言及禁止
-- 「以上です」「ご参考までに」などの挨拶・締め文禁止
+禁止：
+- 表（テーブル）
+- 捏造
+- 参考文献・出典リスト
+- 原文の丸写し（自分の言葉で）
+- ページ番号言及
+- 締めの挨拶文
 
-【強調ルール】
-- 重要な数値・統計・年号は **太字** で強調
-- 例：「GDP成長率は **3.5%**」「参加者 **1,200人**」
+書式：
+- 重要な数値は **太字**
+- 難読漢字には初出時のみ（よみがな）を付与
+- 見出しは # と ## のみ使用
+- 本文は箇条書き（-）で
 
-【読み方と注釈】
-- 難読漢字の初出時に「漢字（よみがな）」を付与（常用漢字は不要）
-- 専門カタカナ語に初出時のみ「用語（中文：中国語訳）」を付与
-
-【出力構成（厳守）】
+出力構成：
 # 資料タイトル
-基本情報（分野・概要）
-
-# 全体構成
-目次形式で各章・セクションのタイトルを列挙
-
-# セクション別 重要ポイント
-各セクションについて：
-- 概要（2-3文）
-- 重要ポイント（最低3項目の箇条書き、各項目は1-2文で詳しく）
-- 補足・気づき（該当があれば）
-
-# 重要キーワード
-各キーワードに「用語 — 意味（中文訳）」の形式で、最低5語以上
-
-# 自己テスト
-3問（各問に選択肢4つ＋模範解答＋解説付き）`
+# 概要（資料全体の要約、3-5文）
+# 各章・各セクションの内容（見出し＋詳しい説明＋重要ポイントの箇条書き）`
 
 async function callGroq(prompt: string, apiKey: string): Promise<string> {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -123,10 +109,9 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
   }
 }
 
-function truncateText(text: string, maxTokens: number = 6000): string {
+function truncateText(text: string, maxTokens: number = 8000): string {
   const maxChars = maxTokens * 3
   if (text.length <= maxChars) return text
-
   const sentences = text.split(/(?<=[。！？.!?])\s+/)
   let truncated = ''
   for (const s of sentences) {
@@ -141,64 +126,34 @@ export async function POST(request: NextRequest) {
     const { content } = await request.json()
 
     if (!content || !content.trim()) {
-      return NextResponse.json({ error: '内容が空です' }, { status: 400 })
+      return NextResponse.json({ error: 'empty' }, { status: 400 })
     }
 
-    const deepseekKey = process.env.DEEPSEEK_API_KEY || ''
     const groqKey = process.env.GROQ_API_KEY || ''
+    const deepseekKey = process.env.DEEPSEEK_API_KEY || ''
     const geminiKey = process.env.GEMINI_API_KEY || ''
 
-    if (!deepseekKey && !groqKey && !geminiKey) {
-      return NextResponse.json({ error: 'AI APIキーが設定されていません' }, { status: 400 })
-    }
-
-    const cleaned = content.trim()
-    const truncated = truncateText(cleaned, 10000)
-
-    const prompt = `以下の資料テキストを解析し、学習ノートを生成してください：
-
-${truncated}`
+    const truncated = truncateText(content.trim(), 10000)
+    const prompt = `以下の資料を解析し学習ノートを作成してください：\n\n${truncated}`
 
     let result = ''
-    const errors: string[] = []
 
-    // Groq first (free, no quota issues)
     if (groqKey) {
-      try {
-        result = await callGroq(prompt, groqKey)
-      } catch (e: any) {
-        errors.push('Groq: ' + (e.message || String(e)))
-      }
+      try { result = await callGroq(prompt, groqKey) } catch {}
     }
-
-    // DeepSeek second (best CJK quality)
     if (!result && deepseekKey) {
-      try {
-        result = await callDeepSeek(prompt, deepseekKey)
-      } catch (e: any) {
-        errors.push('DeepSeek: ' + (e.message || String(e)))
-      }
+      try { result = await callDeepSeek(prompt, deepseekKey) } catch {}
     }
-
-    // Gemini last
     if (!result && geminiKey) {
-      try {
-        result = await callGemini(prompt, geminiKey)
-      } catch (e: any) {
-        errors.push('Gemini: ' + (e.message || String(e)))
-      }
+      try { result = await callGemini(prompt, geminiKey) } catch {}
     }
 
     if (!result) {
-      return NextResponse.json({
-        error: 'AI生成に失敗しました',
-        debug: { errors: errors.join(' | ') || 'no keys configured' }
-      }, { status: 500 })
+      return NextResponse.json({ error: 'all AI providers failed' }, { status: 500 })
     }
 
     return NextResponse.json({ notes: result })
   } catch (error) {
-    console.error('API Error:', error)
-    return NextResponse.json({ error: 'サーバーエラー' }, { status: 500 })
+    return NextResponse.json({ error: 'server error' }, { status: 500 })
   }
 }
