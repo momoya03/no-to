@@ -96,3 +96,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Highlight colors for AI-bolded content */
+.note-content h1 strong,
+.note-content h2 strong,
+.note-content h3 strong,
+.note-content h4 strong {
+  background: #dcfce7;
+  color: #166534;
+}
+.dark .note-content h1 strong,
+.dark .note-content h2 strong,
+.dark .note-content h3 strong,
+.dark .note-content h4 strong {
+  background: rgba(22, 163, 74, 0.3);
+  color: #bbf7d0;
+}
+
+.note-content p strong,
+.note-content li strong,
+.note-content td strong,
+.note-content blockquote strong {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.dark .note-content p strong,
+.dark .note-content li strong,
+.dark .note-content td strong,
+.dark .note-content blockquote strong {
+  background: rgba(37, 99, 235, 0.3);
+  color: #bfdbfe;
+}

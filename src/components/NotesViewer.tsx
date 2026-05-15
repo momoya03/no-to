@@ -134,9 +134,19 @@ export function NotesViewer({
             <td className="px-4 py-2 text-gray-700 dark:text-gray-300" {...props} />
           ),
           hr: ({ ...props }) => <hr className="my-6 border-t border-gray-200 dark:border-gray-700" {...props} />,
-          strong: ({ ...props }) => (
-            <strong className="bg-yellow-200 dark:bg-yellow-800/50 text-yellow-900 dark:text-yellow-100 px-1 py-0.5 rounded font-bold" {...props} />
-          ),
+          strong: ({ children, ...props }) => {
+            const text = typeof children === 'string' ? children : ''
+            const isNumber = text.length > 0 && /^[\s\d.,%‰～≈約万億兆千百十点年月日時分秒円$€£¥kmkg人回頁]+$/.test(text.trim())
+            return (
+              <strong
+                className={isNumber
+                  ? 'bg-yellow-100 dark:bg-yellow-800/40 text-yellow-900 dark:text-yellow-200 px-1 py-0.5 rounded font-bold'
+                  : 'px-1 py-0.5 rounded font-bold'
+                }
+                {...props}
+              />
+            )
+          },
           em: ({ ...props }) => <em className="italic text-gray-600 dark:text-gray-400" {...props} />,
           input: ({ ...props }) => (
             <input className="mr-3 h-4 w-4 text-primary rounded border-gray-300 dark:border-gray-600 focus:ring-primary" type="checkbox" {...props} />
@@ -202,7 +212,7 @@ export function NotesViewer({
       <div className="flex-1 overflow-hidden flex flex-col">
         {displayMode === 'all' ? (
           /* Scroll mode */
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto p-4 note-content">
             <div className="max-w-4xl mx-auto space-y-8">
               {sections.map((s, i) => (
                 <div key={i} className="py-2">
@@ -245,7 +255,7 @@ export function NotesViewer({
             </div>
 
             {/* Page content with slide animation */}
-            <div className="flex-1 overflow-auto p-4 relative">
+            <div className="flex-1 overflow-auto p-4 relative note-content">
               <div
                 key={currentSection}
                 className={`max-w-4xl mx-auto transition-all duration-200 ease-out ${
