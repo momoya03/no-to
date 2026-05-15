@@ -115,43 +115,32 @@ export async function POST(request: NextRequest) {
     const truncated = truncateText(content.trim(), 5000)
     const prompt = `以下の資料を解析し学習ノートを作成してください：\n\n${truncated}`
 
-    // Priority order: all Groq keys → DeepSeek → Gemini
-    // Within Groq: rotate on rate limit, immediately use next key
+    // Priority: DeepSeek > Gemini > Groq (ranked by output quality)
+    const deepseekKey = process.env.DEEPSEEK_API_KEY || ''
+    const geminiKey = process.env.GEMINI_API_KEY || ''
     const groqKeys = [
       process.env.GROQ_API_KEY,
       process.env.GROQ_API_KEY_2,
       process.env.GROQ_API_KEY_3,
     ].filter(Boolean) as string[]
 
-    const deepseekKey = process.env.DEEPSEEK_API_KEY || ''
-    const geminiKey = process.env.GEMINI_API_KEY || ''
-
     let result = ''
-    let activeProvider = ''
 
-    // Try each Groq key in order
-    for (const key of groqKeys) {
-      try {
-        const r = await callGroq(prompt, key)
-        if (r.text) { result = r.text; activeProvider = 'Groq'; break }
-        // Rate limited — silently try next key
-      } catch { /* key invalid, try next */ }
+    // 1st: DeepSeek — best CJK quality
+    if (deepseekKey) {
+      try { const r = await callDeepSeek(prompt, deepseekKey); if (r.text) result = r.text } catch {}
     }
 
-    // DeepSeek (best quality, try if Groq all dead)
-    if (!result && deepseekKey) {
-      try {
-        const r = await callDeepSeek(prompt, deepseekKey)
-        if (r.text) { result = r.text; activeProvider = 'DeepSeek' }
-      } catch {}
-    }
-
-    // Gemini (last resort)
+    // 2nd: Gemini
     if (!result && geminiKey) {
-      try {
-        const r = await callGemini(prompt, geminiKey)
-        if (r.text) { result = r.text; activeProvider = 'Gemini' }
-      } catch {}
+      try { const r = await callGemini(prompt, geminiKey); if (r.text) result = r.text } catch {}
+    }
+
+    // 3rd: Groq keys (rotate on 429)
+    if (!result) {
+      for (const key of groqKeys) {
+        try { const r = await callGroq(prompt, key); if (r.text) { result = r.text; break } } catch {}
+      }
     }
 
     if (!result) {
