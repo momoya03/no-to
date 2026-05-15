@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/FileUpload'
 import { ProcessingIndicator } from '@/components/ProcessingIndicator'
+import DinoGame from '@/components/DinoGame'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Moon, Sun, FileText, Sparkles, ArrowRight } from 'lucide-react'
@@ -400,10 +401,13 @@ export default function Home() {
               )}
             </div>
           ) : (
-            <ProcessingIndicator
-              step={processingStep}
-              progress={processingProgress}
-            />
+            <div className="space-y-5">
+              <DinoGame />
+              <ProcessingIndicator
+                step={processingStep}
+                progress={processingProgress}
+              />
+            </div>
           )}
         </div>
       </main>
