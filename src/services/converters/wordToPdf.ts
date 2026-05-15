@@ -18,7 +18,8 @@ async function convert(
   ctx.fillStyle = '#fff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.fillStyle = '#000'
-  ctx.font = `${14*scale}px "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif`
+  const BODY_FONT = `${14*scale}px "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif`
+  ctx.font = BODY_FONT
   const margin = 30 * scale
   const maxW = canvas.width - margin * 2
   const lineH = 22 * scale
@@ -46,13 +47,13 @@ async function convert(
     ctx.fillStyle = '#fff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     ctx.fillStyle = '#000'
+    ctx.font = BODY_FONT
     const pageLines = lines.slice(p*maxLines, (p+1)*maxLines)
     pageLines.forEach((l, i) => ctx.fillText(l, margin, margin + (i+1)*lineH))
     ctx.font = `${10*scale}px sans-serif`
     ctx.fillStyle = '#999'
     ctx.fillText(`${p+1}/${totalPages}`, canvas.width-margin, canvas.height-margin/2)
     doc.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 297, 210)
-    // Save preview for each page
     const previewCanvas = document.createElement('canvas')
     previewCanvas.width = canvas.width / 2
     previewCanvas.height = canvas.height / 2
