@@ -1,5 +1,6 @@
-import { kv } from '@vercel/kv'
+import { Redis } from '@upstash/redis'
 
+const redis = Redis.fromEnv()
 const DAILY_LIMIT = 1500
 
 function getTodayKey(): string {
@@ -9,24 +10,23 @@ function getTodayKey(): string {
 export async function GET() {
   try {
     const key = getTodayKey()
-    const count = (await kv.get<number>(key)) || 0
-    return Response.json({ date: key, count, remaining: DAILY_LIMIT - count })
+    const count = (await redis.get<number>(key)) || 0
+    return Response.json({ count, remaining: DAILY_LIMIT - count })
   } catch {
-    return Response.json({ date: getTodayKey(), count: 0, remaining: DAILY_LIMIT })
+    return Response.json({ count: 0, remaining: DAILY_LIMIT }, { status: 500 })
   }
 }
 
 export async function POST() {
   try {
     const key = getTodayKey()
-    const count = await kv.incr(key)
-    // Auto-expire at end of day (UTC+9 JST: ~15h from midnight UTC)
+    const count = await redis.incr(key)
+    // Expire at next midnight UTC
     const now = new Date()
     const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
-    const ttl = Math.ceil((tomorrow.getTime() - now.getTime()) / 1000)
-    await kv.expire(key, ttl)
-    return Response.json({ date: key, count, remaining: DAILY_LIMIT - count })
+    await redis.expire(key, Math.ceil((tomorrow.getTime() - now.getTime()) / 1000))
+    return Response.json({ count, remaining: DAILY_LIMIT - count })
   } catch {
-    return Response.json({ date: getTodayKey(), count: 0, remaining: DAILY_LIMIT }, { status: 500 })
+    return Response.json({ count: 0, remaining: DAILY_LIMIT }, { status: 500 })
   }
 }
