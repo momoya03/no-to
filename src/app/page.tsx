@@ -168,13 +168,18 @@ async function generateNotesWithAI(
     const response = await fetch('/api/generate-notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: fullText })
+      body: JSON.stringify({ content: fullText.slice(0, 30000) })
     })
     if (response.ok) {
       const data = await response.json()
       if (data.notes) return data.notes
+      console.warn('[AI] server returned no notes:', data)
+    } else {
+      console.warn('[AI] server error status:', response.status)
     }
-  } catch {}
+  } catch (e) {
+    console.warn('[AI] server call failed:', e)
+  }
 
   return ''
 }
