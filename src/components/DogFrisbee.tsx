@@ -11,18 +11,17 @@ export default function DogFrisbee() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const W = 600, H = 220
-    const GROUND = 190
+    const W = 600, H = 240
+    const GROUND = 200
+    const CYCLE = 320 // frames (~5.3s at 60fps)
     let frame = 0
     let animId: number
 
-    let groundScroll = 0
-
+    // ── Draw Golden Retriever silhouette using bezier paths ──
     const drawDog = (
       x: number, y: number,
       facingRight: boolean,
-      running: boolean,
-      crouching: boolean,
+      phase: 'idle' | 'crouch' | 'run' | 'jump',
       hasFrisbee: boolean,
     ) => {
       ctx.save()
@@ -31,120 +30,153 @@ export default function DogFrisbee() {
       // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.08)'
       ctx.beginPath()
-      ctx.ellipse(x, GROUND, 22, 4, 0, 0, Math.PI * 2)
+      ctx.ellipse(x, GROUND, 20, 4, 0, 0, Math.PI * 2)
       ctx.fill()
 
-      // Tail — wags when idle, streams back when running
-      const tailPhase = frame * 0.45
-      let tailX1 = x - 14 * dir
-      let tailY1 = y - 12
-      let tailX2 = tailX1 - 8 * dir
-      let tailY2 = tailY1 - 10
+      const runStride = phase === 'run' ? Math.sin(frame * 0.5) * 12 : 0
+      const crouchSink = phase === 'crouch' ? 5 : 0
+      const jumpRise = phase === 'jump' ? Math.sin((frame % CYCLE) * 0.06) * 3 : 0
 
-      if (running) {
-        tailX2 = tailX1 - 18 * dir
-        tailY2 = tailY1 - 6 + Math.sin(tailPhase * 0.6) * 6
-      } else {
-        tailX2 = tailX1 - 6 * dir + Math.sin(tailPhase) * 12
-        tailY2 = tailY1 - 12 - Math.abs(Math.cos(tailPhase)) * 10
-      }
+      const py = y - crouchSink + jumpRise
+
+      // ── Tail ── thick at base, feathery, curved up
+      const tailBaseX = x - 18 * dir
+      const tailBaseY = py - 10
+      const wagPhase = frame * 0.4
+      const wag = phase === 'run'
+        ? Math.sin(wagPhase * 0.5) * 8
+        : Math.sin(wagPhase) * 14
 
       ctx.strokeStyle = '#000'
-      ctx.lineWidth = 5
+      ctx.lineWidth = 6
       ctx.lineCap = 'round'
       ctx.beginPath()
-      ctx.moveTo(tailX1, tailY1)
-      ctx.quadraticCurveTo(tailX1 - 4 * dir, tailY1 - 8, tailX2, tailY2)
+      ctx.moveTo(tailBaseX, tailBaseY)
+      ctx.quadraticCurveTo(
+        tailBaseX - 10 * dir, tailBaseY - 14,
+        tailBaseX - 14 * dir + wag, tailBaseY - 28,
+      )
+      ctx.stroke()
+      // tail feathering
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(tailBaseX - 5 * dir, tailBaseY - 8)
+      ctx.quadraticCurveTo(
+        tailBaseX - 8 * dir, tailBaseY - 20,
+        tailBaseX - 8 * dir + wag * 0.7, tailBaseY - 24,
+      )
       ctx.stroke()
 
-      // Back legs
-      const stride = running ? Math.sin(frame * 0.55) * 14 : 0
-      const crouchOff = crouching ? 6 : 0
-
-      // Far legs (lighter = gray)
-      ctx.fillStyle = '#555'
-      // far back
-      ctx.fillRect(x - 6 * dir - 3, y - 2 + crouchOff, 7, GROUND - y + 2 - crouchOff)
-      ctx.fillRect(x - 6 * dir - 3 + stride * 0.5, GROUND - 4, 7, 8)
-      // far front
-      ctx.fillRect(x + 8 * dir - 3, y - 2 + crouchOff, 7, GROUND - y + 2 - crouchOff)
-      ctx.fillRect(x + 8 * dir - 3 - stride * 0.5, GROUND - 4, 7, 8)
-
-      // Body
-      ctx.fillStyle = '#000'
-      ctx.beginPath()
-      ctx.ellipse(x, y - 14, 28, 16, 0, 0, Math.PI * 2)
-      ctx.fill()
-
-      // Near legs (black)
-      ctx.fillStyle = '#000'
-      // near back
-      ctx.fillRect(x - 6 * dir, y - 2 + crouchOff, 7, GROUND - y + 2 - crouchOff)
-      ctx.fillRect(x - 6 * dir - stride * 0.5, GROUND - 4, 7, 9)
-      // near front
-      ctx.fillRect(x + 8 * dir, y - 2 + crouchOff, 7, GROUND - y + 2 - crouchOff)
-      ctx.fillRect(x + 8 * dir + stride * 0.5, GROUND - 4, 7, 9)
-
-      // Neck — angles forward more when crouching
-      const neckAngle = crouching ? -0.3 * dir : 0.5 * dir
-      ctx.fillStyle = '#000'
-      ctx.beginPath()
-      ctx.ellipse(x + 20 * dir, y - 22, 11, 9, neckAngle, 0, Math.PI * 2)
-      ctx.fill()
-
-      // Head
-      const headCX = x + 28 * dir + (crouching ? -4 * dir : 0)
-      const headCY = y - 28 - (crouching ? 4 : 0)
-      ctx.fillStyle = '#000'
-      ctx.beginPath()
-      ctx.arc(headCX, headCY, 12, 0, Math.PI * 2)
-      ctx.fill()
-
-      // Snout
-      const snoutLen = hasFrisbee ? 14 : 12
-      ctx.fillStyle = '#000'
-      ctx.beginPath()
-      ctx.ellipse(headCX + (snoutLen * 0.6) * dir, headCY + 2, snoutLen, 7, 0.15 * dir, 0, Math.PI * 2)
-      ctx.fill()
-
-      // Nose
-      ctx.fillStyle = '#fff'
-      ctx.beginPath()
-      ctx.arc(headCX + snoutLen * dir, headCY + 1, 3.5, 0, Math.PI * 2)
-      ctx.fill()
-
-      // Eye — happy squint when running
-      ctx.fillStyle = '#fff'
-      ctx.beginPath()
-      if (running) {
-        ctx.arc(headCX + 6 * dir, headCY - 5, 2.5, 0, Math.PI)
-      } else {
-        ctx.arc(headCX + 6 * dir, headCY - 5, 2.5, 0, Math.PI * 2)
+      // ── Far legs ──
+      const drawLeg = (lx: number, offY: number, gray: boolean) => {
+        const kneeY = py + 4 + offY
+        const footX = gray ? lx + runStride * 0.4 : lx - runStride * 0.4
+        ctx.fillStyle = gray ? '#666' : '#000'
+        // upper leg
+        ctx.beginPath()
+        ctx.roundRect(lx - 5, py - 2 + offY, 10, GROUND - py + 2 - offY, 4)
+        ctx.fill()
+        // paw
+        ctx.beginPath()
+        ctx.ellipse(footX, GROUND, 7, 5, 0, 0, Math.PI * 2)
+        ctx.fill()
       }
-      ctx.fill()
+      drawLeg(x - 6 * dir, crouchSink - jumpRise, true)   // far back
+      drawLeg(x + 8 * dir, crouchSink - jumpRise, true)   // far front
 
-      // Ear — floppy, lifts slightly when jumping
+      // ── Body ── a sturdy rectangle with rounded ends
       ctx.fillStyle = '#000'
       ctx.beginPath()
-      const earBaseX = headCX - 2 * dir
-      const earBaseY = headCY - 2
-      ctx.ellipse(earBaseX, earBaseY + 6, 7, 14, 0.3 * dir, 0, Math.PI * 2)
+      const bodyL = x - 20 * dir
+      const bodyR = x + 20 * dir
+      const bodyT = py - 24
+      const bodyB = py - 4
+      ctx.moveTo(bodyL + 8 * dir, bodyT)
+      ctx.lineTo(bodyR - 4 * dir, bodyT)
+      ctx.quadraticCurveTo(bodyR, bodyT, bodyR, bodyT + 8)
+      ctx.lineTo(bodyR, bodyB - 4)
+      ctx.quadraticCurveTo(bodyR, bodyB, bodyR - 4 * dir, bodyB)
+      ctx.lineTo(bodyL + 8 * dir, bodyB)
+      ctx.quadraticCurveTo(bodyL, bodyB, bodyL, bodyB - 4)
+      ctx.lineTo(bodyL, bodyT + 8)
+      ctx.quadraticCurveTo(bodyL, bodyT, bodyL + 8 * dir, bodyT)
       ctx.fill()
 
-      // Frisbee in mouth (held at snout tip)
+      // ── Chest (deeper) ──
+      ctx.fillStyle = '#000'
+      ctx.beginPath()
+      ctx.ellipse(x + 16 * dir, py - 12, 11, 14, 0.2 * dir, 0, Math.PI * 2)
+      ctx.fill()
+
+      // ── Near legs ──
+      drawLeg(x - 6 * dir, crouchSink - jumpRise, false)  // near back
+      drawLeg(x + 8 * dir, crouchSink - jumpRise, false)  // near front
+
+      // ── Neck ── thicker, flows into head
+      ctx.fillStyle = '#000'
+      ctx.beginPath()
+      ctx.ellipse(x + 18 * dir, py - 24, 14, 13, 0.9 * dir, 0, Math.PI * 2)
+      ctx.fill()
+
+      // ── Head ── broad skull, distinct stop
+      const headX = x + 28 * dir
+      const headY = py - 30
+      ctx.fillStyle = '#000'
+      ctx.beginPath()
+      // skull - broad dome
+      ctx.arc(headX, headY - 2, 14, 0, Math.PI * 2)
+      ctx.fill()
+
+      // ── Muzzle ── rectangular but rounded, distinct from skull
+      const muzzleW = 22
+      const muzzleH = 14
+      const muzzleX = headX + 8 * dir
+      const muzzleY = headY
+      ctx.fillStyle = '#000'
+      ctx.beginPath()
+      ctx.roundRect(muzzleX - muzzleW/2, muzzleY - muzzleH/2, muzzleW, muzzleH, 6)
+      ctx.fill()
+
+      // ── Nose ── prominent, at end of muzzle
+      ctx.fillStyle = '#fff'
+      ctx.beginPath()
+      ctx.arc(muzzleX + muzzleW/2 * dir - 2 * dir, muzzleY - 1, 4, 0, Math.PI * 2)
+      ctx.fill()
+
+      // ── Eye ── almond-shaped
+      ctx.fillStyle = '#fff'
+      ctx.beginPath()
+      ctx.ellipse(headX + 8 * dir, headY - 6, 3, 2.5, 0, 0, Math.PI * 2)
+      ctx.fill()
+
+      // ── Ear ── the key golden retriever feature: long, hanging, soft
+      const earBaseX = headX - 4 * dir
+      const earBaseY = headY - 2
+      ctx.fillStyle = '#000'
+      ctx.beginPath()
+      // ear hangs down alongside the head
+      ctx.ellipse(earBaseX - 3 * dir, earBaseY + 8, 7, 16, 0.35 * dir, 0, Math.PI * 2)
+      ctx.fill()
+      // slight wave in the ear
+      ctx.beginPath()
+      ctx.ellipse(earBaseX - 2 * dir, earBaseY + 14, 5, 8, 0.2 * dir, 0, Math.PI * 2)
+      ctx.fill()
+
+      // ── Frisbee in mouth ──
       if (hasFrisbee) {
-        const fx = headCX + (snoutLen + 2) * dir
-        const fy = headCY
+        const fx = muzzleX + muzzleW/2 * dir + 1 * dir
+        const fy = muzzleY - 2
         ctx.save()
         ctx.translate(fx, fy)
+        ctx.rotate(-0.4 * dir)
         ctx.strokeStyle = '#000'
         ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.ellipse(0, 0, 10, 3, 0.5 * dir, 0, Math.PI * 2)
+        ctx.ellipse(0, 0, 11, 4, 0, 0, Math.PI * 2)
         ctx.stroke()
         ctx.lineWidth = 1
         ctx.beginPath()
-        ctx.ellipse(0, 0, 5, 1.5, 0.5 * dir, 0, Math.PI * 2)
+        ctx.ellipse(0, 0, 5, 2, 0, 0, Math.PI * 2)
         ctx.stroke()
         ctx.restore()
       }
@@ -152,6 +184,7 @@ export default function DogFrisbee() {
       ctx.restore()
     }
 
+    // ── Draw frisbee in flight ──
     const drawFrisbee = (fx: number, fy: number, angle: number) => {
       ctx.save()
       ctx.translate(fx, fy)
@@ -159,138 +192,123 @@ export default function DogFrisbee() {
       ctx.strokeStyle = '#000'
       ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.ellipse(0, 0, 12, 4, 0, 0, Math.PI * 2)
+      ctx.ellipse(0, 0, 12, 5, 0, 0, Math.PI * 2)
       ctx.stroke()
       ctx.lineWidth = 1
       ctx.beginPath()
-      ctx.ellipse(0, 0, 6, 2, 0, 0, Math.PI * 2)
+      ctx.ellipse(0, 0, 5, 2, 0, 0, Math.PI * 2)
       ctx.stroke()
       ctx.restore()
     }
-
-    // Easing helpers
-    const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
 
     const render = () => {
       ctx.fillStyle = '#fff'
       ctx.fillRect(0, 0, W, H)
 
-      // Ground line
+      // Ground
       ctx.strokeStyle = '#000'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(0, GROUND)
       ctx.lineTo(W, GROUND)
       ctx.stroke()
-      // Ground dashes (scroll when running)
-      groundScroll += 1.5
-      for (let i = -((groundScroll % 24) | 0); i < W + 24; i += 24) {
-        ctx.fillRect(i, GROUND + 2, 10, 1)
+
+      // Scrolling ground dots
+      const scroll = (frame * 2) % 28
+      for (let i = -scroll; i < W + 28; i += 28) {
+        ctx.fillRect(i, GROUND + 3, 6, 1)
+        ctx.fillRect(i + 14, GROUND + 3, 3, 1)
       }
 
-      const T = 300 // total frames per loop (~5 sec)
-      const ph = frame % T
+      const ph = frame % CYCLE
 
-      let dogX = 130, dogY = GROUND - 12
-      let frisbeeX = 0, frisbeeY = 0, frisbeeAngle = 0
-      let hasFrisbee = false
-      let running = false, crouching = false
-      let facingRight = true
-      let frisbeeVisible = false
+      // ── Continuous frisbee trajectory ──
+      // The frisbee is either: in dog's mouth, being thrown, flying, caught
+      const throwStart = 18    // frame when throw begins
+      const throwEnd = 28      // frisbee leaves mouth
+      const catchStart = 175   // dog jumps, frisbee near mouth
+      const catchEnd = 188     // frisbee in mouth
 
-      // ── Phase 1: TOSS (0 – 40) ──
-      if (ph < 40) {
-        const pt = ph / 40
-        hasFrisbee = ph < 25
-        crouching = ph >= 10 && ph < 25
-        frisbeeVisible = ph >= 25
-        dogX = 130
-        dogY = GROUND - 12
+      let dogX: number, dogY: number
+      let phase: 'idle' | 'crouch' | 'run' | 'jump'
+      let hasFrisbee: boolean
+      let facingRight: boolean
+      let frisbeeFree = false
+      let frisbeeFX = 0, frisbeeFY = 0, frisbeeAng = 0
 
-        if (ph >= 25) {
-          // Frisbee released, flies up-right
-          const ft = (ph - 25) / 15
-          const et = easeOut(ft)
-          frisbeeX = 160 + et * 180
-          frisbeeY = GROUND - 40 - et * 100
-          frisbeeAngle = ft * 3
+      // ── STATE MACHINE ──
+
+      if (ph < throwStart) {
+        // IDLE — dog stands with frisbee
+        dogX = 140; dogY = GROUND - 8
+        phase = 'idle'; hasFrisbee = true; facingRight = true
+      } else if (ph < throwEnd) {
+        // THROW — dog crouches and tosses head
+        const pt = (ph - throwStart) / (throwEnd - throwStart)
+        dogX = 140; dogY = GROUND - 8
+        phase = 'crouch'; hasFrisbee = pt < 0.5; facingRight = true
+        if (!hasFrisbee) {
+          frisbeeFree = true
+          // frisbee starts from dog's mouth and arcs forward-up
+          const ft = (pt - 0.5) * 2
+          frisbeeFX = 176 + ft * 60
+          frisbeeFY = GROUND - 48 - ft * 100
+          frisbeeAng = ft * 4
         }
-      }
+      } else if (ph < 60) {
+        // ANTICIPATE — dog crouches, watches frisbee
+        const pt = (ph - throwEnd) / (60 - throwEnd)
+        dogX = 140; dogY = GROUND - 8
+        phase = 'crouch'; hasFrisbee = false; facingRight = true
+        frisbeeFree = true
+        frisbeeFX = 236 + pt * 150
+        frisbeeFY = GROUND - 148 + pt * 20
+        frisbeeAng = 4 + pt * 3
+      } else if (ph < catchStart) {
+        // RUN — dog sprints after frisbee
+        const runLen = catchStart - 60
+        const pt = (ph - 60) / runLen
+        const et = pt < 0.5
+          ? 2 * pt * pt
+          : 1 - Math.pow(-2 * pt + 2, 2) / 2 // easeInOut
+        phase = 'run'; hasFrisbee = false; facingRight = true
+        dogX = 140 + et * 280  // 140 → 420
+        dogY = GROUND - 8
 
-      // ── Phase 2: ANTICIPATE (40 – 55) ──
-      else if (ph < 55) {
-        const pt = (ph - 40) / 15
-        crouching = true
-        dogX = 130
-        dogY = GROUND - 12
-        frisbeeVisible = true
-        // Frisbee keeps flying, slowing slightly
-        frisbeeX = 340 + pt * 60
-        frisbeeY = GROUND - 140 - pt * 30
-        frisbeeAngle = 3 + pt * 1.5
-      }
-
-      // ── Phase 3: SPRINT (55 – 150) ──
-      else if (ph < 150) {
-        const pt = (ph - 55) / 95
-        const et = easeInOut(pt)
-        running = true
-        dogX = 130 + et * 280  // 130 → 410
-        dogY = GROUND - 12
-        frisbeeVisible = true
-        // Frisbee arcs ahead of dog, then starts descending
-        const arc = Math.sin(pt * Math.PI)
-        frisbeeX = 400 + (1 - pt) * 120
-        frisbeeY = GROUND - 150 - arc * 110 + pt * 30
-        frisbeeAngle = 4 + pt * 2
-      }
-
-      // ── Phase 4: JUMP (150 – 175) ──
-      else if (ph < 175) {
-        const pt = (ph - 150) / 25
-        running = false
-        frisbeeVisible = pt < 0.7
+        // Frisbee: single smooth parabola ahead of dog
+        frisbeeFree = true
+        const fp = pt  // 0→1 progress of frisbee arc
+        frisbeeFX = 386 + fp * 130 - fp * fp * 80  // rises then falls slightly
+        frisbeeFY = GROUND - 148 - Math.sin(fp * Math.PI) * 130
+        frisbeeAng = 5 + fp * 4
+      } else if (ph < catchEnd) {
+        // JUMP & CATCH
+        const pt = (ph - catchStart) / (catchEnd - catchStart)
+        phase = 'jump'; hasFrisbee = pt > 0.55; facingRight = true
         const jumpArc = Math.sin(pt * Math.PI)
-        dogX = 410 - pt * 10
-        dogY = GROUND - 12 - jumpArc * 70
-        frisbeeX = 480 - pt * 30
-        frisbeeY = GROUND - 60 - jumpArc * 60
-        frisbeeAngle = 5
+        dogX = 420 - pt * 15
+        dogY = GROUND - 8 - jumpArc * 65
+
+        if (!hasFrisbee) {
+          frisbeeFree = true
+          frisbeeFX = 476 - pt * 30
+          frisbeeFY = GROUND - 52 - jumpArc * 48
+          frisbeeAng = 7
+        }
+      } else if (ph < 260) {
+        // TROT BACK — proudly carrying frisbee
+        const pt = (ph - catchEnd) / (260 - catchEnd)
+        phase = 'run'; hasFrisbee = true; facingRight = false
+        dogX = 405 - pt * 265  // 405 → 140
+        dogY = GROUND - 8
+      } else {
+        // IDLE — rest before next cycle
+        dogX = 140; dogY = GROUND - 8
+        phase = 'idle'; hasFrisbee = true; facingRight = true
       }
 
-      // ── Phase 5: LAND (175 – 195) ──
-      else if (ph < 195) {
-        const pt = (ph - 175) / 20
-        hasFrisbee = pt > 0.3
-        dogX = 400 + pt * 20
-        const landBounce = Math.abs(Math.sin(pt * Math.PI * 1.5)) * (1 - pt) * 8
-        dogY = GROUND - 12 - landBounce
-        frisbeeVisible = !hasFrisbee
-      }
-
-      // ── Phase 6: TROT BACK (195 – 270) ──
-      else if (ph < 270) {
-        const pt = (ph - 195) / 75
-        running = true
-        hasFrisbee = true
-        facingRight = false
-        dogX = 420 - pt * 290  // 420 → 130
-        dogY = GROUND - 12
-        frisbeeVisible = false
-      }
-
-      // ── Phase 7: IDLE (270 – 300) ──
-      else {
-        hasFrisbee = true
-        facingRight = true
-        dogX = 130
-        dogY = GROUND - 12
-        frisbeeVisible = false
-      }
-
-      if (frisbeeVisible) drawFrisbee(frisbeeX, frisbeeY, frisbeeAngle)
-      drawDog(dogX, dogY, facingRight, running, crouching, hasFrisbee)
+      if (frisbeeFree) drawFrisbee(frisbeeFX, frisbeeFY, frisbeeAng)
+      drawDog(dogX, dogY, facingRight, phase, hasFrisbee)
     }
 
     const loop = () => {
@@ -299,7 +317,6 @@ export default function DogFrisbee() {
       animId = requestAnimationFrame(loop)
     }
     animId = requestAnimationFrame(loop)
-
     return () => cancelAnimationFrame(animId)
   }, [])
 
@@ -307,7 +324,7 @@ export default function DogFrisbee() {
     <canvas
       ref={canvasRef}
       width={600}
-      height={220}
+      height={240}
       className="w-full max-w-[600px] rounded-lg border border-black bg-white mx-auto block"
     />
   )
