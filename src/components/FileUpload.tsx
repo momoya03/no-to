@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useState } from 'react'
-import { Upload, File, X } from 'lucide-react'
+import { Upload, File, X, ArrowUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatFileSize } from '@/lib/utils'
@@ -55,8 +55,8 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
   return (
     <div className="w-full">
       <Card className={cn(
-        "border-2 border-dashed transition-all duration-200",
-        isDragging ? "border-primary bg-primary/5" : "border-border",
+        "border-2 border-dashed transition-all duration-200 cursor-pointer",
+        isDragging ? "border-primary bg-primary/5 scale-[1.02]" : "border-border hover:border-primary/40 hover:bg-muted/30",
         disabled && "opacity-50 cursor-not-allowed"
       )}>
         <CardContent className="p-8">
@@ -65,14 +65,14 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className="flex flex-col items-center justify-center text-center cursor-pointer"
+              className="flex flex-col items-center justify-center text-center"
             >
-              <div className="w-16 h-16 mb-4 rounded-full bg-muted flex items-center justify-center">
-                <Upload className="w-8 h-8 text-muted-foreground" />
+              <div className="w-20 h-20 mb-5 rounded-2xl bg-primary/10 flex items-center justify-center relative group-hover:bg-primary/20 transition-colors">
+                <Upload className="w-9 h-9 text-primary" />
               </div>
-              <p className="text-lg font-medium mb-2">PDFをアップロード</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                クリックまたはドラッグ＆ドロップでファイルを選択
+              <p className="text-lg font-semibold mb-1">PDFをアップロード</p>
+              <p className="text-sm text-muted-foreground mb-5">
+                クリックまたはドラッグ＆ドロップ
               </p>
               <input
                 type="file"
@@ -82,8 +82,9 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
                 id="file-upload"
                 disabled={disabled}
               />
-              <Button asChild disabled={disabled}>
-                <label htmlFor="file-upload" className="cursor-pointer">
+              <Button asChild disabled={disabled} size="lg" className="rounded-full px-6">
+                <label htmlFor="file-upload" className="cursor-pointer flex items-center gap-2">
+                  <ArrowUp className="h-4 w-4" />
                   ファイルを選択
                 </label>
               </Button>
@@ -91,11 +92,11 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
           ) : (
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <File className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium truncate max-w-[200px] sm:max-w-[300px]">
+                  <p className="font-semibold truncate max-w-[200px] sm:max-w-[300px]">
                     {selectedFile.name}
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -108,6 +109,7 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
                 size="icon"
                 onClick={handleClear}
                 disabled={disabled}
+                className="rounded-full"
               >
                 <X className="w-5 h-5" />
               </Button>
