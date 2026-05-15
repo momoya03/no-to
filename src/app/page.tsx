@@ -149,9 +149,14 @@ async function generateNotesWithAI(
       })
       if (response.ok) {
         const data = await response.json()
-        return data.notes || ''
+        if (data.notes) return data.notes
+        console.warn('[quota] APIがnotesを返しませんでした:', data)
+      } else {
+        console.warn('[quota] APIエラー ステータス:', response.status)
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[quota] API呼び出しに失敗:', e)
+    }
     return ''
   }
 
@@ -256,10 +261,12 @@ export default function Home() {
       await new Promise(r => setTimeout(r, 300))
 
       if (!aiNotes) {
+        console.warn('[quota] AI生成に失敗したため、ローカル生成にフォールバックします。カウンターは増加しません。')
         const { generateNotesLocal } = await import('@/services/aiService')
         const localNotes = generateNotesLocal(pdfPages)
         aiNotes = localNotes.map(p => p.noteContent).join('\n\n')
       } else {
+        console.log('[quota] AI生成成功、カウンターを増加します')
         setQuota(await incrementQuota())
       }
       setProcessingProgress(100)
