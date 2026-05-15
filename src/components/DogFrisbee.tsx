@@ -2,145 +2,152 @@
 
 import React, { useRef, useEffect } from 'react'
 
-/* ── Pixel-art dog sprites ──
-   22 columns × 18 rows,  '.'=empty  '#'=body  'o'=eye(white)  '~'=frisbee
-   All sprites face right.
-────────────────────────────────────────── */
+/*
+  Pixel-art dog built from body-part blocks.
+  Each part = { x, y, w, h } in a 28×22 grid.
+  Rendered at P=3 → 84×66 px on screen.
+  Dog faces RIGHT.
+*/
 
-const IDLE = [
-  '......................',
-  '..........####........',
-  '.........##oo##.......',
-  '........##....##......',
-  '.......##.#####......',
-  '.......########......',
-  '.......########......',
-  '......##########.....',
-  '.....###########.....',
-  '.....###########.....',
-  '.....###########.....',
-  '......#########......',
-  '......##...###.......',
-  '......##...##........',
-  '......##...##........',
-  '......##...##........',
-  '......##...##........',
-  '......##...##........',
-]
+const P = 3
+const GW = 28 // grid columns
+const GH = 22 // grid rows
 
-const CROUCH = [
-  '......................',
-  '......................',
-  '..........####........',
-  '.........##oo##.......',
-  '........##....##......',
-  '.......##.#####......',
-  '.......########......',
-  '......##########.....',
-  '.....###########.....',
-  '....#############....',
-  '....#############....',
-  '.....###########.....',
-  '......##...###.......',
-  '......##....##.......',
-  '......##....##.......',
-  '......##....##.......',
-  '......##....##.......',
-  '......##....##.......',
-]
+type Part = { x: number; y: number; w: number; h: number; gray?: boolean }
 
-const RUN1 = [
-  '......................',
-  '..........####........',
-  '.........##oo##.......',
-  '........##....##......',
-  '.......##.#####......',
-  '.......########......',
-  '......##########.....',
-  '.....###########.....',
-  '....#############....',
-  '....#############....',
-  '.....###########.....',
-  '......#########......',
-  '.......##.##.........',
-  '.......##..##........',
-  '......##....##.......',
-  '......##.....##......',
-  '.......##....##......',
-  '........##..##.......',
-]
+interface Pose {
+  head: Part
+  snout: Part
+  ear: Part
+  neck: Part
+  body: Part
+  hindFar: Part
+  hindNear: Part
+  frontFar: Part
+  frontNear: Part
+  tail: Part
+  eye: { x: number; y: number }
+}
 
-const RUN2 = [
-  '......................',
-  '..........####........',
-  '.........##oo##.......',
-  '........##....##......',
-  '.......##.#####......',
-  '.......########......',
-  '......##########.....',
-  '.....###########.....',
-  '....#############....',
-  '....#############....',
-  '.....###########.....',
-  '......#########......',
-  '.....##..##..........',
-  '....##...##..........',
-  '....##....##.........',
-  '....##.....##........',
-  '....##......##.......',
-  '....##.......##......',
-]
+// ── Pose definitions (grid coords) ──
 
-const JUMP = [
-  '......................',
-  '......................',
-  '..........####........',
-  '.........##oo##.......',
-  '........##....##......',
-  '.......##.#####......',
-  '.......########......',
-  '......##########.....',
-  '.....###########.....',
-  '....#############....',
-  '....#############....',
-  '.....###########.....',
-  '......##########.....',
-  '.......##...##.......',
-  '........##.##........',
-  '........##.##........',
-  '.........#####.......',
-  '..........###........',
-]
+const IDLE: Pose = {
+  head:    { x:16, y:2,  w:6, h:5 },
+  snout:   { x:21, y:4,  w:5, h:3 },
+  ear:     { x:13, y:2,  w:3, h:9 },
+  neck:    { x:14, y:6,  w:4, h:3 },
+  body:    { x:5,  y:8,  w:14,h:6 },
+  hindFar: { x:7,  y:13, w:2, h:8, gray:true },
+  hindNear:{ x:6,  y:13, w:2, h:9 },
+  frontFar:{ x:15, y:13, w:2, h:8, gray:true },
+  frontNear:{x:14, y:13, w:2, h:9 },
+  tail:    { x:0,  y:3,  w:5, h:2 },
+  eye:     { x:18, y:4 },
+}
 
-// Parse sprite → array of {x,y} for filled pixels
-function parseSprite(lines: string[]): { filled: [number,number][], eye: [number,number] } {
+const CROUCH: Pose = {
+  head:    { x:16, y:4,  w:6, h:5 },
+  snout:   { x:21, y:6,  w:5, h:3 },
+  ear:     { x:13, y:4,  w:3, h:9 },
+  neck:    { x:14, y:8,  w:4, h:2 },
+  body:    { x:5,  y:9,  w:14,h:7 },
+  hindFar: { x:7,  y:15, w:2, h:6, gray:true },
+  hindNear:{ x:6,  y:15, w:2, h:7 },
+  frontFar:{ x:15, y:15, w:2, h:6, gray:true },
+  frontNear:{x:14, y:15, w:2, h:7 },
+  tail:    { x:0,  y:5,  w:5, h:2 },
+  eye:     { x:18, y:6 },
+}
+
+const RUN1: Pose = {
+  head:    { x:16, y:2,  w:6, h:5 },
+  snout:   { x:21, y:4,  w:5, h:3 },
+  ear:     { x:13, y:2,  w:3, h:9 },
+  neck:    { x:14, y:6,  w:4, h:3 },
+  body:    { x:5,  y:8,  w:14,h:6 },
+  hindFar: { x:7,  y:13, w:2, h:6, gray:true },
+  hindNear:{ x:5,  y:13, w:2, h:8 },
+  frontFar:{ x:17, y:13, w:2, h:4, gray:true },
+  frontNear:{x:13, y:13, w:2, h:7 },
+  tail:    { x:0,  y:3,  w:5, h:2 },
+  eye:     { x:18, y:4 },
+}
+
+const RUN2: Pose = {
+  head:    { x:16, y:2,  w:6, h:5 },
+  snout:   { x:21, y:4,  w:5, h:3 },
+  ear:     { x:13, y:2,  w:3, h:9 },
+  neck:    { x:14, y:6,  w:4, h:3 },
+  body:    { x:5,  y:8,  w:14,h:6 },
+  hindFar: { x:7,  y:13, w:2, h:4, gray:true },
+  hindNear:{ x:8,  y:13, w:2, h:7 },
+  frontFar:{ x:13, y:13, w:2, h:6, gray:true },
+  frontNear:{x:15, y:13, w:2, h:8 },
+  tail:    { x:0,  y:3,  w:5, h:2 },
+  eye:     { x:18, y:4 },
+}
+
+const JUMP: Pose = {
+  head:    { x:16, y:1,  w:6, h:5 },
+  snout:   { x:21, y:3,  w:5, h:3 },
+  ear:     { x:13, y:1,  w:3, h:9 },
+  neck:    { x:14, y:5,  w:4, h:3 },
+  body:    { x:5,  y:7,  w:14,h:6 },
+  hindFar: { x:7,  y:8,  w:2, h:4, gray:true },
+  hindNear:{ x:6,  y:8,  w:2, h:5 },
+  frontFar:{ x:15, y:8,  w:2, h:4, gray:true },
+  frontNear:{x:14, y:8,  w:2, h:5 },
+  tail:    { x:0,  y:2,  w:5, h:2 },
+  eye:     { x:18, y:3 },
+}
+
+const poses: Record<string, Pose> = { idle: IDLE, crouch: CROUCH, run1: RUN1, run2: RUN2, jump: JUMP }
+type PoseKey = keyof typeof poses
+
+// Expand pose → array of pixel coords
+function poseToPixels(pose: Pose, flip: boolean): { filled: [number,number][], eye: [number,number] } {
   const filled: [number,number][] = []
-  let eye: [number,number] = [0,0]
-  for (let row = 0; row < lines.length; row++) {
-    for (let col = 0; col < lines[row].length; col++) {
-      const ch = lines[row][col]
-      if (ch === '#' || ch === '~') filled.push([col, row])
-      if (ch === 'o') eye = [col, row]
+
+  const add = (p: Part) => {
+    for (let dy = 0; dy < p.h; dy++) {
+      for (let dx = 0; dx < p.w; dx++) {
+        let cx = p.x + dx
+        if (flip) cx = GW - 1 - cx
+        filled.push([cx, p.y + dy])
+      }
     }
   }
-  return { filled, eye }
+
+  // Tail (further detail: draw as two segments)
+  const t = pose.tail
+  for (let dy = 0; dy < t.h; dy++) {
+    for (let dx = 0; dx < t.w; dx++) {
+      let cx = t.x + dx
+      if (flip) cx = GW - 1 - cx
+      filled.push([cx, t.y + dy])
+    }
+  }
+  // tail tip (one extra pixel up)
+  const tipX = flip ? GW - 1 - (t.x + 1) : t.x + 1
+  filled.push([tipX, t.y - 1])
+
+  add(pose.hindFar)
+  add(pose.hindNear)
+  add(pose.frontFar)
+  add(pose.frontNear)
+  add(pose.body)
+  add(pose.neck)
+  add(pose.ear)
+  add(pose.head)
+  add(pose.snout)
+
+  let ex = pose.eye.x, ey = pose.eye.y
+  if (flip) ex = GW - 1 - ex
+  return { filled, eye: [ex, ey] }
 }
 
-const P = 4 // pixel scale
-const SW = 22 // sprite width in cells
-const SH = 18 // sprite height in cells
-const PW = SW * P // pixel width on canvas
-const PH = SH * P // pixel height on canvas
-
-const sprites = {
-  idle: parseSprite(IDLE),
-  crouch: parseSprite(CROUCH),
-  run1: parseSprite(RUN1),
-  run2: parseSprite(RUN2),
-  jump: parseSprite(JUMP),
-}
-
-type PoseKey = keyof typeof sprites
+const PW = GW * P
+const PH = GH * P
 
 export default function DogFrisbee() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -151,168 +158,128 @@ export default function DogFrisbee() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const W = 600, H = 240
-    const GROUND = 210
-    const CYCLE = 420 // ~7 sec at 60fps
+    const W = 640, H = 250
+    const GROUND = 222
+    const CYCLE = 420
     let frame = 0
     let animId: number
 
-    const drawSprite = (cx: number, cy: number, pose: PoseKey, flip: boolean) => {
-      const { filled, eye } = sprites[pose]
-      const ox = cx - PW / 2
-      const oy = cy - PH + P // bottom-align
-
-      for (const [col, row] of filled) {
-        let sx = col
-        if (flip) sx = SW - 1 - col
-        ctx.fillStyle = '#000'
-        ctx.fillRect(ox + sx * P, oy + row * P, P, P)
-      }
-
-      // Eye (white pixel)
-      let ex = eye[0]
-      if (flip) ex = SW - 1 - eye[0]
-      ctx.fillStyle = '#fff'
-      ctx.fillRect(ox + ex * P, oy + eye[1] * P, P, P)
+    const drawPixel = (x: number, y: number, s: number, color: string) => {
+      ctx.fillStyle = color
+      ctx.fillRect(x, y, s, s)
     }
 
-    const drawFrisbee = (fx: number, fy: number, ang: number) => {
-      // Pixel-art frisbee: a small horizontal line with spin
-      const pw = 16, ph = 6
-      ctx.save()
-      ctx.translate(fx, fy)
-      ctx.rotate(ang)
+    const drawDog = (cx: number, cy: number, key: PoseKey, flip: boolean) => {
+      const { filled, eye } = poseToPixels(poses[key], flip)
+      const ox = cx - PW/2
+      const oy = cy - PH
+
+      for (const [gx, gy] of filled) {
+        drawPixel(ox + gx * P, oy + gy * P, P, '#000')
+      }
+      // eye — white pixel
+      drawPixel(ox + eye[0] * P, oy + eye[1] * P, P, '#fff')
+    }
+
+    const drawFrisbee = (fx: number, fy: number) => {
+      // simple pixel-art disc
+      const hw = 10, hh = 3
       ctx.fillStyle = '#000'
-      // frisbee body — two rows of pixels
-      for (let i = 0; i < 8; i++) {
-        ctx.fillRect(i * 2 - pw/2, -ph/2, 2, 2)
+      for (let dx = -hw; dx <= hw; dx += 2) {
+        ctx.fillRect(fx + dx, fy - hh, 2, 2)
       }
-      for (let i = 1; i < 7; i++) {
-        ctx.fillRect(i * 2 - pw/2, ph/2 - 2, 2, 2)
+      for (let dx = -hw; dx <= hw; dx += 2) {
+        ctx.fillRect(fx + dx, fy + hh - 2, 2, 2)
       }
-      ctx.fillRect(0 - pw/2, 0, pw, 2) // center spine
-      ctx.restore()
+      ctx.fillRect(fx - hw, fy, hw * 2, 2)
     }
-
-    const easeInOut = (t: number) => t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2
-    const easeOut = (t: number) => 1 - Math.pow(1-t, 2)
 
     const render = () => {
-      // Clear
       ctx.fillStyle = '#fff'
       ctx.fillRect(0, 0, W, H)
 
       // Ground
-      const scroll = (frame * 2) % 32
       ctx.fillStyle = '#000'
-      for (let i = -scroll; i < W + 32; i += 32) {
-        ctx.fillRect(i, GROUND + 3, 6, 1)
-        ctx.fillRect(i + 14, GROUND + 3, 3, 1)
-      }
       ctx.fillRect(0, GROUND, W, 1)
+      const scroll = (frame * 2.5) % 36
+      for (let i = -scroll; i < W + 36; i += 36) {
+        ctx.fillRect(i, GROUND + 3, 8, 1)
+        ctx.fillRect(i + 18, GROUND + 3, 4, 1)
+      }
 
       const ph = frame % CYCLE
 
-      // ── Animation state ──
-      let dogX: number, dogY: number
-      let pose: PoseKey
-      let flip: boolean
-      let hasFrisbee: boolean
-      let frisbeeX = 0, frisbeeY = 0, frisbeeAng = 0
+      let dogX = 130, dogY = GROUND
+      let pose: PoseKey = 'idle'
+      let flip = false
+      let hasFrisbee = false
+      let frisbeeX = 0, frisbeeY = 0
       let showFrisbee = false
 
-      // ── Phase timeline ──
-      const T_IDLE1 = 40    // idle with frisbee
-      const T_THROW = 60    // crouch + throw
-      const T_WATCH = 90    // watch frisbee fly
-      const T_CHASE = 240   // sprint chase
-      const T_JUMP = 270    // leap + catch
-      const T_RETURN = 370  // trot back
-      // 370-420 = idle
-
-      if (ph < T_IDLE1) {
-        // Idle, frisbee in mouth
-        dogX = 120; dogY = GROUND
-        pose = 'idle'; flip = false; hasFrisbee = true
-      } else if (ph < T_THROW) {
-        // Crouch and toss frisbee
-        const pt = (ph - T_IDLE1) / (T_THROW - T_IDLE1)
-        dogX = 120; dogY = GROUND
-        pose = 'crouch'; flip = false
-        hasFrisbee = pt < 0.4
-
+      // ── Timeline ──
+      if (ph < 40) {
+        // IDLE — dog stands with frisbee in mouth
+        pose = 'idle'; hasFrisbee = true
+      } else if (ph < 60) {
+        // THROW — crouch, toss frisbee
+        const pt = (ph - 40) / 20
+        pose = 'crouch'
+        hasFrisbee = pt < 0.35
         if (!hasFrisbee) {
           showFrisbee = true
-          const ft = (pt - 0.4) / 0.6
-          frisbeeX = 160 + ft * 90
-          frisbeeY = GROUND - 60 - ft * 90
-          frisbeeAng = ft * 4
+          const ft = (pt - 0.35) / 0.65
+          frisbeeX = 180 + ft * 100
+          frisbeeY = GROUND - 70 - ft * 90
         }
-      } else if (ph < T_WATCH) {
-        // Crouch, watch frisbee fly away
-        const pt = (ph - T_THROW) / (T_WATCH - T_THROW)
-        dogX = 120; dogY = GROUND
-        pose = 'crouch'; flip = false; hasFrisbee = false
-        showFrisbee = true
-        frisbeeX = 250 + pt * 200
-        frisbeeY = GROUND - 150 + pt * 30
-        frisbeeAng = 4 + pt * 4
-      } else if (ph < T_CHASE) {
-        // Sprint after frisbee
-        const dur = T_CHASE - T_WATCH
-        const pt = (ph - T_WATCH) / dur
-        const et = easeInOut(pt)
-        dogX = 120 + et * 310  // 120 → 430
-        dogY = GROUND
-        const runFrame = Math.floor(ph / 8) % 2
-        pose = (runFrame === 0 ? 'run1' : 'run2') as PoseKey
-        flip = false; hasFrisbee = false
-        showFrisbee = true
-
-        // Frisbee: high smooth arc, dog chasing underneath
+      } else if (ph < 95) {
+        // WATCH — crouch, frisbee flies away
+        const pt = (ph - 60) / 35
+        pose = 'crouch'; hasFrisbee = false; showFrisbee = true
+        frisbeeX = 280 + pt * 220
+        frisbeeY = GROUND - 160 + pt * 35
+      } else if (ph < 250) {
+        // CHASE — sprinting
+        const dur = 155
+        const pt = (ph - 95) / dur
+        const et = pt < 0.5 ? 2*pt*pt : 1 - Math.pow(-2*pt+2,2)/2
+        dogX = 130 + et * 330
+        pose = (Math.floor(ph / 7) % 2 === 0 ? 'run1' : 'run2') as PoseKey
+        hasFrisbee = false; showFrisbee = true
         const fp = pt
-        frisbeeX = 450 + (1-fp) * 180
-        frisbeeY = GROUND - 120 - Math.sin(fp * Math.PI) * 130
-        frisbeeAng = 7 + fp * 5
-      } else if (ph < T_JUMP) {
-        // Jump up and catch
-        const dur = T_JUMP - T_CHASE
-        const pt = (ph - T_CHASE) / dur
-        const jumpH = Math.sin(pt * Math.PI) * 70
-        dogX = 430 - pt * 10
-        dogY = GROUND - jumpH
-        pose = 'jump'; flip = false
-        hasFrisbee = pt > 0.5
+        frisbeeX = 500 + (1-fp) * 190
+        frisbeeY = GROUND - 130 - Math.sin(fp * Math.PI) * 140
+      } else if (ph < 280) {
+        // JUMP + CATCH
+        const pt = (ph - 250) / 30
+        pose = 'jump'
+        const jh = Math.sin(pt * Math.PI) * 75
+        dogY = GROUND - jh
+        dogX = 460 - pt * 15
+        hasFrisbee = pt > 0.45
         if (!hasFrisbee) {
           showFrisbee = true
-          frisbeeX = 500 - pt * 50
-          frisbeeY = GROUND - 60 - jumpH * 0.8
-          frisbeeAng = 9
+          frisbeeX = 520 - pt * 50
+          frisbeeY = GROUND - 65 - jh * 0.7
         }
-      } else if (ph < T_RETURN) {
-        // Trot back with frisbee
-        const dur = T_RETURN - T_JUMP
-        const pt = (ph - T_JUMP) / dur
-        dogX = 420 - pt * 300  // → 120
-        dogY = GROUND
-        const runFrame = Math.floor(ph / 8) % 2
-        pose = (runFrame === 0 ? 'run1' : 'run2') as PoseKey
+      } else if (ph < 380) {
+        // TROT BACK
+        const pt = (ph - 280) / 100
+        dogX = 445 - pt * 315
+        pose = (Math.floor(ph / 7) % 2 === 0 ? 'run1' : 'run2') as PoseKey
         flip = true; hasFrisbee = true
       } else {
-        // Idle with frisbee, rest
-        dogX = 120; dogY = GROUND
-        pose = 'idle'; flip = false; hasFrisbee = true
+        // IDLE rest
+        pose = 'idle'; hasFrisbee = true
       }
 
-      // Draw
-      if (showFrisbee) drawFrisbee(frisbeeX, frisbeeY, frisbeeAng)
-      drawSprite(dogX, dogY, pose, flip)
+      if (showFrisbee) drawFrisbee(frisbeeX, frisbeeY)
+      drawDog(dogX, dogY, pose, flip)
 
-      // Frisbee in mouth (overlay on sprite)
+      // Frisbee in mouth overlay
       if (hasFrisbee && !showFrisbee) {
-        const fx = flip ? dogX - PW/2 + P : dogX + PW/2 + P
+        const fx = flip ? dogX - PW/2 + 2*P : dogX + PW/2 + 2*P
         const fy = dogY - PH + 6*P
-        drawFrisbee(fx, fy, flip ? 0.3 : -0.3)
+        drawFrisbee(fx, fy)
       }
     }
 
@@ -328,9 +295,9 @@ export default function DogFrisbee() {
   return (
     <canvas
       ref={canvasRef}
-      width={600}
-      height={240}
-      className="w-full max-w-[600px] rounded-lg border border-black bg-white mx-auto block"
+      width={640}
+      height={250}
+      className="w-full max-w-[640px] rounded-lg border border-black bg-white mx-auto block"
     />
   )
 }
