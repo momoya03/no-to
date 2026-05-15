@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/FileUpload'
 import { ProcessingIndicator } from '@/components/ProcessingIndicator'
@@ -12,6 +12,7 @@ import { createFullTextStream } from '@/services/aiService'
 import { extractPDFText } from '@/services/pdfService'
 import { PDFPage, NoteDocument, NotePage } from '@/types'
 import { generateId } from '@/lib/utils'
+import { getQuota, incrementQuota } from '@/lib/quota'
 
 const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
 
@@ -86,6 +87,11 @@ export default function Home() {
   const [processingProgress, setProcessingProgress] = useState(0)
   const [processingStep, setProcessingStep] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [quota, setQuota] = useState({ date: '', count: 0 })
+
+  useEffect(() => {
+    getQuota().then(setQuota)
+  }, [])
 
   const handleFileSelect = useCallback(async (file: File) => {
     setIsProcessing(true)
@@ -110,20 +116,34 @@ export default function Home() {
       const fullText = createFullTextStream(pdfPages)
       setProcessingProgress(75)
 
-      setProcessingStep('ノート生成中...')
+      setProcessingStep('AIがノートを生成中...')
+      setProcessingProgress(75)
+
+      // Simulate incremental progress while waiting for AI response
+      let tick = 0
+      const aiProgressTimer = setInterval(() => {
+        tick++
+        const simulated = Math.min(75 + tick * 2, 88)
+        setProcessingProgress(simulated)
+        if (tick === 1) setProcessingStep('AIがノートを生成中...')
+        if (tick === 3) setProcessingStep('重要なポイントを抽出中...')
+        if (tick === 5) setProcessingStep('ノートを構成中...')
+      }, 800)
 
       let aiNotes = ''
       try {
-        aiNotes = await generateNotesWithAI(fullText, (step, progress) => {
-          setProcessingStep(step)
-          setProcessingProgress(75 + Math.round(progress * 0.2))
-        })
+        aiNotes = await generateNotesWithAI(fullText, () => {})
       } catch (e) { console.error('AI generation failed:', e) }
+      clearInterval(aiProgressTimer)
+      setProcessingProgress(92)
+      setProcessingStep('ノートを整形中...')
 
       if (!aiNotes) {
         const { generateNotesLocal } = await import('@/services/aiService')
-        const localNotes = generateNotesLocal(pdfPages, 'detailed')
+        const localNotes = generateNotesLocal(pdfPages)
         aiNotes = localNotes.map(p => p.noteContent).join('\n\n')
+      } else {
+        setQuota(await incrementQuota())
       }
       setProcessingProgress(95)
 
@@ -226,6 +246,30 @@ export default function Home() {
             <p className="text-lg text-muted-foreground">
               授業資料をアップロードするだけで、整理されたノートが作成できます
             </p>
+          </div>
+
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center gap-3 px-5 py-3 bg-muted/50 rounded-xl border">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">AI 変換枠</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-28 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (quota.count / 1500) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-sm font-mono tabular-nums">
+                  <span className="font-bold">{1500 - quota.count}</span>
+                  <span className="text-muted-foreground">/1500</span>
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                残り約<span className="font-semibold text-foreground">{1500 - quota.count}</span>回変換可能
+              </span>
+            </div>
           </div>
 
           {!isProcessing ? (

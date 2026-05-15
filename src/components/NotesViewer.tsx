@@ -3,19 +3,14 @@
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { NoteDocument, NotePage } from '@/types'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { NoteDocument } from '@/types'
 import { Button } from '@/components/ui/button'
-import { FileText, BookOpen, Copy, Download } from 'lucide-react'
-import { copyToClipboard } from '@/services/exportService'
+import { FileText, Copy, Download } from 'lucide-react'
 
 interface NotesViewerProps {
   noteDocument: NoteDocument
   currentPage: number
-  viewMode: 'detailed' | 'exam'
   displayMode: 'page' | 'all'
-  onViewModeChange: (mode: 'detailed' | 'exam') => void
   onDisplayModeChange: (mode: 'page' | 'all') => void
   onCopy: () => void
   onExportPDF: () => void
@@ -25,9 +20,7 @@ interface NotesViewerProps {
 export function NotesViewer({
   noteDocument,
   currentPage,
-  viewMode,
   displayMode,
-  onViewModeChange,
   onDisplayModeChange,
   onCopy,
   onExportPDF,
@@ -38,7 +31,8 @@ export function NotesViewer({
   const highlightImportantNumbers = (text: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = []
     let lastIndex = 0
-    const regex = /(\d+(?:\.\d+)?(?:点|年|月|日|円|万|億|%|km|kg|人|社|回|頁|ページ|pt|cm|mm)?)/g
+    // group1: prefix (~/≈/約), group2: number, group3: unit
+    const regex = /(～|≈|約|约)?(\d+(?:\.\d+)?)([点年月日円万円億兆%kmkg人社回頁ページptcmmm倍割千百十])?/g
     let match
 
     while ((match = regex.exec(text)) !== null) {
@@ -46,8 +40,12 @@ export function NotesViewer({
         parts.push(text.slice(lastIndex, match.index))
       }
 
-      const isImportant = /点|年|月|日|円|万|億|%|km|kg|人|社|回|頁|ページ|pt|cm|mm/.test(match[0])
-      if (isImportant && !/1949|1978/.test(match[0])) {
+      const hasPrefix = !!match[1]
+      const numberStr = match[2]
+      const hasUnit = !!match[3]
+      const isLargeNumber = numberStr.replace(/[,.]/g, '').length >= 3
+
+      if ((hasPrefix || hasUnit || isLargeNumber) && !/1949|1978/.test(match[0])) {
         parts.push(
           <span
             key={match.index}
@@ -263,23 +261,6 @@ export function NotesViewer({
               PDF
             </Button>
           </div>
-        </div>
-      </div>
-
-      <div className="p-2 border-b shrink-0">
-        <div className="flex flex-wrap gap-2">
-          <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as 'detailed' | 'exam')} className="w-full sm:w-auto">
-            <TabsList className="h-8">
-              <TabsTrigger value="detailed" className="h-7 text-xs px-2">
-                <BookOpen className="h-3 w-3 mr-1" />
-                詳細モード
-              </TabsTrigger>
-              <TabsTrigger value="exam" className="h-7 text-xs px-2">
-                <FileText className="h-3 w-3 mr-1" />
-                試験モード
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
       </div>
 

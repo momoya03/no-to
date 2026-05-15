@@ -2,16 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { PDFViewer } from '@/components/PDFViewer'
 import { NotesViewer } from '@/components/NotesViewer'
-import { AIChat } from '@/components/AIChat'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Moon, Sun, ArrowLeft, MessageSquare } from 'lucide-react'
+import { Moon, Sun, ArrowLeft } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { NoteDocument, PDFPage, Message, AppState } from '@/types'
+import { NoteDocument, PDFPage, AppState } from '@/types'
 import { exportToPDF, exportToTXT, copyToClipboard, getNotesAsText } from '@/services/exportService'
-import { createMessage, generateQAResponseLocal } from '@/services/aiService'
 
 export default function NotesPage() {
   const { theme, setTheme } = useTheme()
@@ -22,18 +18,14 @@ export default function NotesPage() {
     pdfPages: [],
     noteDocument: null,
     currentPage: 1,
-    viewMode: 'detailed',
     displayMode: 'all',
     isProcessing: false,
     processingProgress: 0,
     processingStep: '',
-    messages: [],
-    isAIProcessing: false,
     error: null
   })
 
   const [mounted, setMounted] = useState(false)
-  const [showAIChat, setShowAIChat] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -73,23 +65,6 @@ export default function NotesPage() {
     setState(prev => ({ ...prev, currentPage: page }))
   }, [])
 
-  const handleViewModeChange = useCallback((mode: 'detailed' | 'exam') => {
-    if (!state.pdfPages.length) return
-    
-    setState(prev => {
-      const { generateNotesLocal } = require('@/services/aiService')
-      const newNotePages = generateNotesLocal(prev.pdfPages, mode)
-      return {
-        ...prev,
-        viewMode: mode,
-        noteDocument: prev.noteDocument ? {
-          ...prev.noteDocument,
-          pages: newNotePages
-        } : null
-      }
-    })
-  }, [state.pdfPages])
-
   const handleDisplayModeChange = useCallback((mode: 'page' | 'all') => {
     setState(prev => ({ ...prev, displayMode: mode }))
   }, [])
@@ -113,37 +88,6 @@ export default function NotesPage() {
     if (!state.noteDocument) return
     exportToTXT(state.noteDocument)
   }, [state.noteDocument])
-
-  const handleSendMessage = useCallback(async (content: string) => {
-    if (!state.noteDocument) return
-
-    const userMessage = createMessage('user', content)
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, userMessage],
-      isAIProcessing: true
-    }))
-
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    const response = generateQAResponseLocal(
-      content,
-      state.pdfPages,
-      state.noteDocument.pages,
-      state.currentPage
-    )
-
-    const assistantMessage = createMessage('assistant', response)
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, assistantMessage],
-      isAIProcessing: false
-    }))
-  }, [state.noteDocument, state.pdfPages, state.currentPage])
-
-  const handleClearMessages = useCallback(() => {
-    setState(prev => ({ ...prev, messages: [] }))
-  }, [])
 
   if (!mounted) {
     return (
@@ -221,9 +165,7 @@ export default function NotesPage() {
           <NotesViewer
             noteDocument={state.noteDocument}
             currentPage={state.currentPage}
-            viewMode={state.viewMode}
             displayMode={state.displayMode}
-            onViewModeChange={handleViewModeChange}
             onDisplayModeChange={handleDisplayModeChange}
             onCopy={handleCopy}
             onExportPDF={handleExportPDF}
@@ -231,32 +173,6 @@ export default function NotesPage() {
           />
         </div>
       </main>
-
-      <div className="fixed bottom-6 right-6 z-50">
-        {showAIChat ? (
-          <div className="w-80 sm:w-96 h-[500px] bg-background border rounded-lg shadow-2xl flex flex-col">
-            <AIChat
-              messages={state.messages}
-              isProcessing={state.isAIProcessing}
-              pdfPages={state.pdfPages}
-              notePages={state.noteDocument.pages}
-              currentPage={state.currentPage}
-              onSendMessage={handleSendMessage}
-              onClearMessages={handleClearMessages}
-              onClose={() => setShowAIChat(false)}
-            />
-          </div>
-        ) : (
-          <Button
-            variant="default"
-            size="icon"
-            className="h-14 w-14 rounded-full shadow-lg"
-            onClick={() => setShowAIChat(true)}
-          >
-            <MessageSquare className="h-6 w-6" />
-          </Button>
-        )}
-      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { PDFPage, NotePage, Message } from '@/types'
+import { PDFPage, NotePage } from '@/types'
 import { generateId } from '@/lib/utils'
 
 function cleanPdfTextCompletely(text: string): string {
@@ -586,10 +586,7 @@ function generateStructuredNotes(fullText: string, pageCount: number): string {
 
 // ========== Main entry point ==========
 
-export function generateNotesLocal(
-  pages: PDFPage[],
-  mode: 'detailed' | 'exam' = 'detailed'
-): NotePage[] {
+export function generateNotesLocal(pages: PDFPage[]): NotePage[] {
   const fullText = createFullTextStream(pages)
   const chunks = splitTextIntoChunks(fullText, 2000)
 
@@ -615,90 +612,3 @@ export function generateNotesLocal(
   return notePages
 }
 
-// ========== Q&A ==========
-
-export function generateQAResponseLocal(
-  userQuestion: string,
-  pdfPages: PDFPage[],
-  notePages: NotePage[],
-  currentPage: number
-): string {
-  const question = userQuestion.toLowerCase()
-
-  const allText = pdfPages.map(p => p.text).join('\n')
-  const sentences = allText.split(/[。！？.!?\n]/)
-    .map(s => s.trim())
-    .filter(s => s.length > 10)
-
-  const keywords = userQuestion
-    .replace(/[？?！!。、，,のはがをにでともへやか]/g, ' ')
-    .split(/\s+/)
-    .filter(k => k.length > 1 && !['して', 'ですが', 'ですか', '教えて', 'ついて', 'ください', '何ですか', 'なんですか', 'どこですか'].includes(k))
-
-  let relevantSentences: string[] = []
-
-  if (question.includes('このページ') || question.includes('ここ')) {
-    const page = pdfPages.find(p => p.pageNumber === currentPage)
-    if (page) {
-      relevantSentences = page.text.split(/[。！？.!?\n]/)
-        .map(s => s.trim())
-        .filter(s => s.length > 10)
-    }
-  } else if (question.includes('要約') || question.includes('まとめ')) {
-    const keyTerms = extractAutoKeyTerms(allText)
-    if (keyTerms.length > 0) {
-      const keyTermSet = new Set(keyTerms.slice(0, 5))
-      relevantSentences = sentences.filter(s =>
-        Array.from(keyTermSet).some(t => s.includes(t))
-      )
-    }
-    if (relevantSentences.length === 0) relevantSentences = sentences.slice(0, 10)
-    return `この資料の要約：\n\n${relevantSentences.slice(0, 8).join('。\n- ')}`
-
-  } else if (question.includes('ポイント') || question.includes('重要')) {
-    const keyTerms = extractAutoKeyTerms(allText)
-    const keyPoints = sentences.filter(s =>
-      keyTerms.slice(0, 5).some(t => s.includes(t))
-    ).slice(0, 8)
-    if (keyPoints.length > 0) {
-      return `重要なポイント：\n\n${keyPoints.map((p, i) => `${i + 1}. ${p}`).join('\n')}`
-    }
-
-  } else if (question.includes('意味') || question.includes('とは') || question.includes('何') && question.includes('です')) {
-    for (const kw of keywords) {
-      const defSentence = sentences.find(s => s.includes(kw) && s.length > 20)
-      if (defSentence) {
-        return `「${kw}」について：\n\n${defSentence}`
-      }
-    }
-  }
-
-  for (const kw of keywords) {
-    const matches = sentences.filter(s => s.includes(kw))
-    if (matches.length > 0) {
-      relevantSentences.push(...matches)
-    }
-  }
-
-  const unique = [...new Set(relevantSentences)].slice(0, 8)
-
-  if (unique.length > 0) {
-    return `「${keywords.filter(k => k.length > 2).slice(0, 3).join('、')}」に関する内容：\n\n${unique.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
-  }
-
-  const keyTerms = extractAutoKeyTerms(allText)
-  const overview = sentences.filter(s =>
-    keyTerms.slice(0, 5).some(t => s.includes(t))
-  ).slice(0, 5)
-
-  return `資料の概要：\n\n${overview.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
-}
-
-export function createMessage(role: 'user' | 'assistant', content: string): Message {
-  return {
-    id: generateId(),
-    role,
-    content,
-    timestamp: new Date()
-  }
-}

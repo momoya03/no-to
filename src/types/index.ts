@@ -19,31 +19,15 @@ export interface NoteDocument {
   createdAt: Date
 }
 
-export interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
-}
-
-export interface AIProviderConfig {
-  provider: 'openai' | 'gemini' | 'claude'
-  apiKey: string
-  model: string
-}
-
 export interface AppState {
   pdfFile: File | null
   pdfPages: PDFPage[]
   noteDocument: NoteDocument | null
   currentPage: number
-  viewMode: 'detailed' | 'exam'
   displayMode: 'page' | 'all'
   isProcessing: boolean
   processingProgress: number
   processingStep: string
-  messages: Message[]
-  isAIProcessing: boolean
   error: string | null
 }
 
