@@ -250,11 +250,11 @@ export default function Home() {
 
       // Check quota BEFORE calling AI — save real API calls
       const currentQuota = await getQuota()
-      const overLimit = currentQuota.count >= 2000
+      const overLimit = currentQuota.count >= 200
 
       let aiNotes = ''
       if (overLimit) {
-        console.warn('[quota] 1日2000回制限に達したためAIをスキップします')
+        console.warn('[quota] 1日200回制限に達したためAIをスキップします')
       } else {
         try {
           aiNotes = await generateNotesWithAI(fullText, pdfLang, noteLang, () => {})
@@ -395,12 +395,12 @@ export default function Home() {
                       <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, (quota.count / 2000) * 100)}%` }}
+                          style={{ width: `${Math.min(100, (quota.count / 200) * 100)}%` }}
                         />
                       </div>
                       <span className="text-sm font-mono tabular-nums font-semibold">
-                        {2000 - quota.count}
-                        <span className="text-muted-foreground font-normal"> / 2000</span>
+                        {200 - quota.count}
+                        <span className="text-muted-foreground font-normal"> / 200</span>
                       </span>
                     </div>
                   </div>

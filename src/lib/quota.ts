@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'quota-backup'
-const DAILY_LIMIT = 2000
+const DAILY_LIMIT = 200
 
 export interface QuotaData {
   date: string
