@@ -43,7 +43,7 @@ async function callGroq(prompt: string, apiKey: string): Promise<string> {
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 8192
+      max_tokens: 4096
     })
   })
 
@@ -70,7 +70,7 @@ async function callDeepSeek(prompt: string, apiKey: string): Promise<string> {
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 8192
+      max_tokens: 4096
     })
   })
 
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     const deepseekKey = process.env.DEEPSEEK_API_KEY || ''
     const geminiKey = process.env.GEMINI_API_KEY || ''
 
-    const truncated = truncateText(content.trim(), 10000)
+    const truncated = truncateText(content.trim(), 4000)
     const prompt = `以下の資料を解析し学習ノートを作成してください：\n\n${truncated}`
 
     let result = ''

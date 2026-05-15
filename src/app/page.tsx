@@ -168,7 +168,7 @@ async function generateNotesWithAI(
     const response = await fetch('/api/generate-notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: fullText.slice(0, 30000) })
+      body: JSON.stringify({ content: fullText.slice(0, 15000) })
     })
     if (response.ok) {
       const data = await response.json()
