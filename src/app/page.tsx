@@ -140,48 +140,46 @@ async function generateNotesWithAI(
 ): Promise<string> {
   onProgress('AIによるノート生成中...', 0)
 
-  // Try Gemini client-side first, fall back to server API route
-  if (GEMINI_KEY) {
+  if (!GEMINI_KEY) {
     try {
-      const SYSTEM_PROMPT = buildSystemPrompt(pdfLang, noteLang)
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${fullText.slice(0, 40000)}` }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-          })
-        }
-      )
+      const response = await fetch('/api/generate-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: fullText })
+      })
       if (response.ok) {
         const data = await response.json()
-        const notes = data.candidates?.[0]?.content?.parts?.[0]?.text
-        if (notes) return notes
+        return data.notes || ''
       }
-      console.warn('[quota] Gemini client-side failed, falling back to server API')
-    } catch (e) {
-      console.warn('[quota] Gemini client-side error:', e)
-    }
+    } catch {}
+    return ''
   }
 
-  // Fall back to server API route
   try {
-    const response = await fetch('/api/generate-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: fullText })
-    })
+    const SYSTEM_PROMPT = buildSystemPrompt(pdfLang, noteLang)
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${fullText.slice(0, 40000)}` }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+        })
+      }
+    )
+
     if (response.ok) {
       const data = await response.json()
-      if (data.notes) return data.notes
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     }
-    console.warn('[quota] Server API returned no notes')
-  } catch (e) {
-    console.warn('[quota] Server API error:', e)
+
+    return ''
+  } catch (error) {
+    console.error('AI generation error:', error)
+    return ''
   }
-  return ''
 }
 
 export default function Home() {
@@ -258,12 +256,10 @@ export default function Home() {
       await new Promise(r => setTimeout(r, 300))
 
       if (!aiNotes) {
-        console.warn('[quota] AI生成に失敗したため、ローカル生成にフォールバックします。カウンターは増加しません。')
         const { generateNotesLocal } = await import('@/services/aiService')
         const localNotes = generateNotesLocal(pdfPages)
         aiNotes = localNotes.map(p => p.noteContent).join('\n\n')
       } else {
-        console.log('[quota] AI生成成功、カウンターを増加します')
         setQuota(await incrementQuota())
       }
       setProcessingProgress(100)
@@ -306,7 +302,7 @@ export default function Home() {
 
       setTimeout(() => {
         router.push('/notes')
-      }, 600)
+      }, 500)
 
     } catch (err) {
       console.error('Processing error:', err)
