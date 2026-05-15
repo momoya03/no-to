@@ -6,7 +6,7 @@ import { FileUpload } from '@/components/FileUpload'
 import { ProcessingIndicator } from '@/components/ProcessingIndicator'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Moon, Sun, FileText, Sparkles } from 'lucide-react'
+import { Moon, Sun, FileText, Sparkles, ArrowRight } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { createFullTextStream } from '@/services/aiService'
 import { extractPDFText } from '@/services/pdfService'
@@ -288,10 +288,10 @@ export default function Home() {
   }, [router, pdfLang, noteLang])
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-muted/20">
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">garood</h1>
+    <div className="min-h-screen flex flex-col">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
+          <h1 className="text-lg font-semibold tracking-tight">garood</h1>
           <Button
             variant="ghost"
             size="icon"
@@ -303,57 +303,71 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-12 sm:py-20">
-        <div className="max-w-xl mx-auto">
+      <main className="flex-1">
+        <div className="max-w-xl mx-auto px-6 py-12 sm:py-16">
           {!isProcessing ? (
-            <div className="space-y-8">
-              <div className="text-center mb-2">
-                <p className="text-sm text-muted-foreground tracking-wide">
-                  PDF から学習ノートを自動生成
-                </p>
-              </div>
-
+            <div className="space-y-6">
               <FileUpload onFileSelect={handleFileSelect} />
 
-              {/* Language + Quota — compact row */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-3 w-3" />
-                  <select
-                    value={pdfLang}
-                    onChange={(e) => setPdfLang(e.target.value)}
-                    className="text-xs bg-transparent border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    {Object.entries(LANG_OPTIONS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                  <span>→</span>
-                  <select
-                    value={noteLang}
-                    onChange={(e) => setNoteLang(e.target.value)}
-                    className="text-xs bg-transparent border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    {Object.entries(LANG_OPTIONS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                </div>
-                <span className="hidden sm:inline">·</span>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-3 w-3" />
-                  <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary/60 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, (quota.count / 1500) * 100)}%` }}
-                    />
+              {/* Settings card */}
+              <Card>
+                <CardContent className="p-5 space-y-4">
+                  {/* Language row */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2 flex-1">
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm text-muted-foreground shrink-0">PDFの言語</span>
+                      <select
+                        value={pdfLang}
+                        onChange={(e) => setPdfLang(e.target.value)}
+                        className="text-sm border rounded-md px-2.5 py-1.5 bg-background outline-none focus:ring-2 focus:ring-primary/20"
+                      >
+                        {Object.entries(LANG_OPTIONS).map(([k, v]) => (
+                          <option key={k} value={k}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                    <div className="flex items-center gap-2 flex-1">
+                      <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                      <span className="text-sm text-muted-foreground shrink-0">ノートの言語</span>
+                      <select
+                        value={noteLang}
+                        onChange={(e) => setNoteLang(e.target.value)}
+                        className="text-sm border rounded-md px-2.5 py-1.5 bg-background outline-none focus:ring-2 focus:ring-primary/20"
+                      >
+                        {Object.entries(LANG_OPTIONS).map(([k, v]) => (
+                          <option key={k} value={k}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <span className="font-mono tabular-nums">
-                    <span className="font-medium text-foreground">{1500 - quota.count}</span>
-                    <span>/1500</span>
-                  </span>
-                </div>
-              </div>
+
+                  {/* Divider */}
+                  <div className="border-t" />
+
+                  {/* Quota row */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">AI 変換枠</span>
+                      <span className="text-xs text-muted-foreground">本日残り</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, (quota.count / 1500) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-mono tabular-nums font-semibold">
+                        {1500 - quota.count}
+                        <span className="text-muted-foreground font-normal"> / 1500</span>
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {error && (
                 <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
@@ -372,7 +386,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="py-6 text-center text-xs text-muted-foreground/60">
+      <footer className="py-6 text-center text-xs text-muted-foreground/50">
         garood
       </footer>
     </div>
