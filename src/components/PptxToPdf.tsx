@@ -18,6 +18,7 @@ export default function PptxToPdf() {
   const [slides, setSlides] = useState<RenderedSlide[]>([])
   const [currentSlide, setCurrentSlide] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<File | null>(null)
 
   const handleExtract = useCallback(async (file: File) => {
     setStatus('extracting')
@@ -27,6 +28,7 @@ export default function PptxToPdf() {
     setSlides([])
     setCurrentSlide(0)
     setFileName(file.name.replace(/\.pptx?$/i, '.pdf'))
+    fileRef.current = file
 
     try {
       const rendered = await renderPPTX(file, 0.7, (slide, total) => {
@@ -55,17 +57,23 @@ export default function PptxToPdf() {
     setMessage('PDFを生成中...')
 
     try {
+      // Re-render at high resolution for PDF (scale 2.0, PNG for lossless)
+      const file = fileRef.current
+      if (!file) throw new Error('ファイルが見つかりません')
+
+      const hiResSlides = await renderPPTX(file, 2.0, (slide, total) => {
+        setProgress(Math.round((slide / total) * 100))
+        setMessage(`高解像度レンダリング中 ${slide}/${total}...`)
+      })
+
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-      // A4 landscape = 297 x 210 mm
 
-      for (let i = 0; i < slides.length; i++) {
+      for (let i = 0; i < hiResSlides.length; i++) {
         if (i > 0) doc.addPage()
-        setMessage(`ページ ${i + 1}/${slides.length} を追加中...`)
-        setProgress(Math.round(((i + 1) / slides.length) * 100))
-
-        // Use existing preview data URL
-        const img = slides[i].dataUrl
-        doc.addImage(img, 'JPEG', 0, 0, 297, 210)
+        setMessage(`ページ ${i + 1}/${hiResSlides.length} を追加中...`)
+        // Use PNG for lossless quality
+        const pngUrl = hiResSlides[i].canvas.toDataURL('image/png')
+        doc.addImage(pngUrl, 'PNG', 0, 0, 297, 210)
       }
 
       setProgress(100)
@@ -83,6 +91,7 @@ export default function PptxToPdf() {
   const handleReset = useCallback(() => {
     setStatus('idle'); setProgress(0); setMessage('')
     setPdfBlob(null); setSlides([]); setCurrentSlide(0)
+    fileRef.current = null
   }, [])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
