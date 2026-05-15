@@ -1,26 +1,32 @@
+import { kv } from '@vercel/kv'
+
 const DAILY_LIMIT = 1500
 
-// In-memory storage shared across requests within the same instance
-const quotaStore: Map<string, number> = new Map()
-
 function getTodayKey(): string {
-  return new Date().toISOString().slice(0, 10)
+  return `quota:${new Date().toISOString().slice(0, 10)}`
 }
 
 export async function GET() {
-  const key = getTodayKey()
-  const count = quotaStore.get(key) || 0
-  return Response.json({ date: key, count, remaining: DAILY_LIMIT - count })
+  try {
+    const key = getTodayKey()
+    const count = (await kv.get<number>(key)) || 0
+    return Response.json({ date: key, count, remaining: DAILY_LIMIT - count })
+  } catch {
+    return Response.json({ date: getTodayKey(), count: 0, remaining: DAILY_LIMIT })
+  }
 }
 
 export async function POST() {
-  const key = getTodayKey()
-  const current = quotaStore.get(key) || 0
-  // Clean old entries
-  for (const [k] of quotaStore) {
-    if (k !== key) quotaStore.delete(k)
+  try {
+    const key = getTodayKey()
+    const count = await kv.incr(key)
+    // Auto-expire at end of day (UTC+9 JST: ~15h from midnight UTC)
+    const now = new Date()
+    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+    const ttl = Math.ceil((tomorrow.getTime() - now.getTime()) / 1000)
+    await kv.expire(key, ttl)
+    return Response.json({ date: key, count, remaining: DAILY_LIMIT - count })
+  } catch {
+    return Response.json({ date: getTodayKey(), count: 0, remaining: DAILY_LIMIT }, { status: 500 })
   }
-  const count = current + 1
-  quotaStore.set(key, count)
-  return Response.json({ date: key, count, remaining: DAILY_LIMIT - count })
 }
