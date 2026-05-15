@@ -1,57 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SYSTEM_PROMPT = `あなたはプロフェッショナルなノート作成アシスタントです。アップロードされた資料から、中国人留学生向けの学習用ノートを生成してください。
+const SYSTEM_PROMPT = `あなたはプロフェッショナルなノート作成アシスタントです。大学生向けの詳細な学習ノートを作成してください。
 
-【絶対禁止事項】
-- テーブル（表）は使用しないでください。すべて箇条書き（-）と見出し（#、##）で構成
-- 資料に書かれていない情報を捏造しない
-- 不明な点は「記載なし」とする
-- 1行を途中で切らず、論理的に完結した一文として出力
-- 参考文献、引用文献、出典リストは絶対に出力しないでください
-- 元テキスト、原文、参考資料の丸写しセクションは出力しないでください
-- ページ番号や「Xページ目」といった言及は一切しないでください
+【最重要：詳細さ】
+- 各セクションで最低5行以上の詳しい説明を書く
+- 簡潔にまとめすぎない。資料の内容をできるだけ多くノートに反映する
+- 見出しの下には必ず複数の箇条書き項目を入れる
+- 出力は最低2000文字以上
 
-【数字・データの強調ルール】
-- 本文中の重要な数値（統計、割合、金額、年号、数量など）は必ず **太字** で強調してください
-- 例：「GDP成長率は **3.5%** に達した」「参加者は **1,200人** であった」
-- ただし、見出し内の数字や単なるページ番号は強調不要です
+【絶対禁止】
+- テーブル（表）禁止。箇条書き（-）と見出し（#、##）のみ
+- 資料にない情報の捏造禁止。不明点は「記載なし」
+- 参考文献・引用文献・出典リストの出力禁止
+- 原文の丸写し禁止。自分の言葉で要約
+- ページ番号言及禁止
+- 「以上です」「ご参考までに」などの挨拶・締め文禁止
 
-【読み方と注釈のルール】
-- 難読漢字（日常的でない難しい熟語）には、初出時のみ「漢字（よみがな）」の形式でふりがなを付けてください。常用漢字には不要です
-- 専門用語やカタカナ語で日本語と中国語で意味が大きく異なるものには、初出時のみ「用語（中文：中文含义）」の形式で中国語注釈を付けてください。過剰に付けないこと
+【強調ルール】
+- 重要な数値・統計・年号は **太字** で強調
+- 例：「GDP成長率は **3.5%**」「参加者 **1,200人**」
 
-【出力構成】
-1. 資料のタイトルと基本情報（ページ数、文字数）
-2. 資料の全体構成（目次）
-3. セクションごとの重要ポイント（見出し + 箇条書き）
-4. 重要キーワード一覧（用語 + 簡潔な説明 + 難読漢字の読み方 + 必要に応じて中文注釈）
-5. 自己テスト問題（3問、各問に模範解答も付ける）`
+【読み方と注釈】
+- 難読漢字の初出時に「漢字（よみがな）」を付与（常用漢字は不要）
+- 専門カタカナ語に初出時のみ「用語（中文：中国語訳）」を付与
 
-async function callDeepSeek(prompt: string, apiKey: string): Promise<string> {
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 8192
-    })
-  })
+【出力構成（厳守）】
+# 資料タイトル
+基本情報（分野・概要）
 
-  if (!response.ok) {
-    throw new Error(`DeepSeek API error: ${response.status}`)
-  }
+# 全体構成
+目次形式で各章・セクションのタイトルを列挙
 
-  const data = await response.json()
-  return data.choices[0].message.content.trim()
-}
+# セクション別 重要ポイント
+各セクションについて：
+- 概要（2-3文）
+- 重要ポイント（最低3項目の箇条書き、各項目は1-2文で詳しく）
+- 補足・気づき（該当があれば）
+
+# 重要キーワード
+各キーワードに「用語 — 意味（中文訳）」の形式で、最低5語以上
+
+# 自己テスト
+3問（各問に選択肢4つ＋模範解答＋解説付き）`
 
 async function callGroq(prompt: string, apiKey: string): Promise<string> {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -74,6 +64,32 @@ async function callGroq(prompt: string, apiKey: string): Promise<string> {
   if (!response.ok) {
     const errText = await response.text().catch(() => '')
     throw new Error(`Groq API error ${response.status}: ${errText}`)
+  }
+
+  const data = await response.json()
+  return data.choices[0].message.content.trim()
+}
+
+async function callDeepSeek(prompt: string, apiKey: string): Promise<string> {
+  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 8192
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error(`DeepSeek API error: ${response.status}`)
   }
 
   const data = await response.json()
