@@ -29,132 +29,137 @@ const SYSTEM_PROMPT = `あなたはプロのノート作成アシスタントで
 # 概要（資料全体の要約、3-5文）
 # 各章・各セクションの内容（見出し＋詳しい説明＋重要ポイントの箇条書き）`
 
-async function callGroq(prompt: string, apiKey: string): Promise<string> {
+async function callGroq(prompt: string, apiKey: string): Promise<{ text: string; rateLimited: boolean }> {
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 4096
+      messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: prompt }],
+      temperature: 0.7, max_tokens: 4096
     })
   })
 
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`Groq API error ${response.status}: ${errText}`)
+  if (response.status === 429) {
+    return { text: '', rateLimited: true }
   }
-
+  if (!response.ok) {
+    throw new Error(`Groq ${response.status}`)
+  }
   const data = await response.json()
-  return data.choices[0].message.content.trim()
+  return { text: data.choices[0].message.content.trim(), rateLimited: false }
 }
 
-async function callDeepSeek(prompt: string, apiKey: string): Promise<string> {
+async function callDeepSeek(prompt: string, apiKey: string): Promise<{ text: string; rateLimited: boolean }> {
   const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
       model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 4096
+      messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: prompt }],
+      temperature: 0.7, max_tokens: 4096
     })
   })
-
+  if (response.status === 429 || response.status === 402) {
+    return { text: '', rateLimited: true }
+  }
   if (!response.ok) {
-    throw new Error(`DeepSeek API error: ${response.status}`)
+    throw new Error(`DeepSeek ${response.status}`)
   }
-
   const data = await response.json()
-  return data.choices[0].message.content.trim()
+  return { text: data.choices[0].message.content.trim(), rateLimited: false }
 }
 
-async function callGemini(prompt: string, apiKey: string): Promise<string> {
+async function callGemini(prompt: string, apiKey: string): Promise<{ text: string; rateLimited: boolean }> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 9000)
-
+  const t = setTimeout(() => controller.abort(), 9000)
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${prompt}` }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
-      }),
-      signal: controller.signal
-    })
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '')
-      throw new Error(`Gemini API error ${response.status}: ${errText}`)
-    }
-
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${prompt}` }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+        }),
+        signal: controller.signal
+      }
+    )
+    if (response.status === 429) return { text: '', rateLimited: true }
+    if (!response.ok) throw new Error(`Gemini ${response.status}`)
     const data = await response.json()
-    return data.candidates[0].content.parts[0].text.trim()
-  } finally {
-    clearTimeout(timeout)
-  }
+    return { text: data.candidates[0].content.parts[0].text.trim(), rateLimited: false }
+  } finally { clearTimeout(t) }
 }
 
-function truncateText(text: string, maxTokens: number = 8000): string {
+function truncateText(text: string, maxTokens = 5000): string {
   const maxChars = maxTokens * 3
   if (text.length <= maxChars) return text
   const sentences = text.split(/(?<=[。！？.!?])\s+/)
-  let truncated = ''
+  let result = ''
   for (const s of sentences) {
-    if (truncated.length + s.length > maxChars) break
-    truncated += s + ' '
+    if (result.length + s.length > maxChars) break
+    result += s + ' '
   }
-  return truncated.trim()
+  return result.trim()
 }
 
 export async function POST(request: NextRequest) {
   try {
     const { content } = await request.json()
-
-    if (!content || !content.trim()) {
+    if (!content?.trim()) {
       return NextResponse.json({ error: 'empty' }, { status: 400 })
     }
 
-    const groqKeys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2, process.env.GROQ_API_KEY_3].filter(Boolean) as string[]
+    const truncated = truncateText(content.trim(), 5000)
+    const prompt = `以下の資料を解析し学習ノートを作成してください：\n\n${truncated}`
+
+    // Priority order: all Groq keys → DeepSeek → Gemini
+    // Within Groq: rotate on rate limit, immediately use next key
+    const groqKeys = [
+      process.env.GROQ_API_KEY,
+      process.env.GROQ_API_KEY_2,
+      process.env.GROQ_API_KEY_3,
+    ].filter(Boolean) as string[]
+
     const deepseekKey = process.env.DEEPSEEK_API_KEY || ''
     const geminiKey = process.env.GEMINI_API_KEY || ''
 
-    const truncated = truncateText(content.trim(), 4000)
-    const prompt = `以下の資料を解析し学習ノートを作成してください：\n\n${truncated}`
-
     let result = ''
+    let activeProvider = ''
 
+    // Try each Groq key in order
     for (const key of groqKeys) {
-      try { result = await callGroq(prompt, key) } catch {}
-      if (result) break
+      try {
+        const r = await callGroq(prompt, key)
+        if (r.text) { result = r.text; activeProvider = 'Groq'; break }
+        // Rate limited — silently try next key
+      } catch { /* key invalid, try next */ }
     }
+
+    // DeepSeek (best quality, try if Groq all dead)
     if (!result && deepseekKey) {
-      try { result = await callDeepSeek(prompt, deepseekKey) } catch {}
+      try {
+        const r = await callDeepSeek(prompt, deepseekKey)
+        if (r.text) { result = r.text; activeProvider = 'DeepSeek' }
+      } catch {}
     }
+
+    // Gemini (last resort)
     if (!result && geminiKey) {
-      try { result = await callGemini(prompt, geminiKey) } catch {}
+      try {
+        const r = await callGemini(prompt, geminiKey)
+        if (r.text) { result = r.text; activeProvider = 'Gemini' }
+      } catch {}
     }
 
     if (!result) {
-      return NextResponse.json({ error: 'all AI providers failed' }, { status: 500 })
+      return NextResponse.json({ error: 'all providers exhausted' }, { status: 500 })
     }
 
     return NextResponse.json({ notes: result })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'server error' }, { status: 500 })
   }
 }
