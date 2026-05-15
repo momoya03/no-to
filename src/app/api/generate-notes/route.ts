@@ -117,10 +117,14 @@ ${truncated}`
 
     let result = ''
 
+    let geminiError = ''
+    let deepseekError = ''
+
     if (geminiKey) {
       try {
         result = await callGemini(prompt, geminiKey)
-      } catch (e) {
+      } catch (e: any) {
+        geminiError = e.message || String(e)
         console.error('Gemini error:', e)
       }
     }
@@ -128,13 +132,22 @@ ${truncated}`
     if (!result && deepseekKey) {
       try {
         result = await callDeepSeek(prompt, deepseekKey)
-      } catch (e) {
+      } catch (e: any) {
+        deepseekError = e.message || String(e)
         console.error('DeepSeek error:', e)
       }
     }
 
     if (!result) {
-      return NextResponse.json({ error: 'AI生成に失敗しました' }, { status: 500 })
+      return NextResponse.json({
+        error: 'AI生成に失敗しました',
+        debug: {
+          hasGemini: !!geminiKey,
+          hasDeepSeek: !!deepseekKey,
+          geminiError: geminiError || null,
+          deepseekError: deepseekError || null,
+        }
+      }, { status: 500 })
     }
 
     return NextResponse.json({ notes: result })
