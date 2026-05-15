@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/FileUpload'
 import { ProcessingIndicator } from '@/components/ProcessingIndicator'
 import DogFrisbee from '@/components/DogFrisbee'
-import PptxToPdf from '@/components/PptxToPdf'
+import ConversionPanel from '@/components/ConversionPanel'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Moon, Sun, FileText, Sparkles, ArrowRight } from 'lucide-react'
@@ -393,7 +393,7 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              <PptxToPdf />
+              <ConversionPanel />
 
               {error && (
                 <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
