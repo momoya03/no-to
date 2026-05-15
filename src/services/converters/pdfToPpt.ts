@@ -114,7 +114,7 @@ async function convert(
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${i}.png"/>
 </Relationships>`)
 
-    if (i <= 3) previewUrls.push(canvas.toDataURL('image/jpeg', 0.7))
+    previewUrls.push(canvas.toDataURL('image/jpeg', 0.7))
   }
 
   onProgress('PPTXを作成中...', 95)
