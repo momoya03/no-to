@@ -12,7 +12,7 @@ async function convert(
 
   onProgress('PDFを生成中...', 40)
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-  let firstCanvas: HTMLCanvasElement | null = null
+  const previewCanvases: HTMLCanvasElement[] = []
 
   const sheetNames = wb.SheetNames
   for (let si = 0; si < sheetNames.length; si++) {
@@ -36,7 +36,7 @@ async function convert(
 
     canvas.width = margin*2 + cols*colW
     canvas.height = margin*2 + (rows+1)*rowH
-    if (!firstCanvas) firstCanvas = canvas
+    previewCanvases.push(canvas)
     const ctx = canvas.getContext('2d')!
     ctx.fillStyle = '#fff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -71,9 +71,12 @@ async function convert(
   }
 
   const blob = doc.output('blob')
-  const previewUrls = firstCanvas
-    ? [firstCanvas.toDataURL('image/jpeg', 0.7)]
-    : undefined
+  const previewUrls = previewCanvases.map(c => {
+    const small = document.createElement('canvas')
+    small.width = c.width / 2; small.height = c.height / 2
+    small.getContext('2d')!.drawImage(c, 0, 0, small.width, small.height)
+    return small.toDataURL('image/jpeg', 0.7)
+  })
   return { blob, fileName: file.name.replace(/\.xlsx?$/i, '.pdf'), previewUrls }
 }
 

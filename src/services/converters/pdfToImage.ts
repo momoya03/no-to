@@ -32,7 +32,7 @@ async function convert(
     const base64 = dataUrl.split(',')[1]
     zip.file(`page_${String(i).padStart(3,'0')}.png`, base64, { base64: true })
 
-    if (i <= 3) previewUrls.push(dataUrl)
+    previewUrls.push(dataUrl)
   }
 
   onProgress('ZIPを作成中...', 97)

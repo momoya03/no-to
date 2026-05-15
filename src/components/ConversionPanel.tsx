@@ -190,6 +190,22 @@ export default function ConversionPanel() {
                 {previewIdx + 1} / {result.previewUrls.length}
               </div>
             </div>
+
+            {/* Thumbnail row */}
+            {result.previewUrls.length > 1 && (
+              <div className="flex gap-1 overflow-x-auto pb-1">
+                {result.previewUrls.map((url, i) => (
+                  <button key={i} onClick={() => setPreviewIdx(i)}
+                    className={`shrink-0 w-12 h-9 rounded border-2 overflow-hidden ${
+                      i === previewIdx ? 'border-primary ring-1 ring-primary' : 'border-border opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={url} alt={`Page ${i+1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button onClick={handleDownload} size="sm" className="flex-1 gap-2">
                 <Download className="h-4 w-4" /> {result.fileName}

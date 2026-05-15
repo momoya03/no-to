@@ -38,11 +38,11 @@ async function convert(
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   const totalPages = Math.ceil(lines.length / maxLines) || 1
+  const previewUrls: string[] = []
 
   for (let p = 0; p < totalPages; p++) {
     if (p > 0) doc.addPage()
     onProgress(`ページ ${p+1}/${totalPages}`, 50 + Math.round((p/totalPages)*45))
-    // Clear and redraw page
     ctx.fillStyle = '#fff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     ctx.fillStyle = '#000'
@@ -52,21 +52,16 @@ async function convert(
     ctx.fillStyle = '#999'
     ctx.fillText(`${p+1}/${totalPages}`, canvas.width-margin, canvas.height-margin/2)
     doc.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 297, 210)
+    // Save preview for each page
+    const previewCanvas = document.createElement('canvas')
+    previewCanvas.width = canvas.width / 2
+    previewCanvas.height = canvas.height / 2
+    const pctx = previewCanvas.getContext('2d')!
+    pctx.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height)
+    previewUrls.push(previewCanvas.toDataURL('image/jpeg', 0.7))
   }
 
   const blob = doc.output('blob')
-
-  // Preview: render first page of text
-  const previewCanvas = document.createElement('canvas')
-  previewCanvas.width = 842; previewCanvas.height = 595
-  const pctx = previewCanvas.getContext('2d')!
-  pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, 842, 595)
-  pctx.fillStyle = '#000'
-  pctx.font = '12px "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif'
-  const firstLines = lines.slice(0, 30)
-  firstLines.forEach((l, i) => pctx.fillText(l, 20, 20 + (i+1)*18))
-  const previewUrls = [previewCanvas.toDataURL('image/jpeg', 0.7)]
-
   return { blob, fileName: file.name.replace(/\.docx?$/i, '.pdf'), previewUrls }
 }
 

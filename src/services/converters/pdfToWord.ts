@@ -67,17 +67,23 @@ async function convert(
   })
   const blob = await Packer.toBlob(doc)
 
-  // Preview: render collected text to canvas
-  const previewCanvas = document.createElement('canvas')
-  previewCanvas.width = 842; previewCanvas.height = 595
-  const pctx = previewCanvas.getContext('2d')!
-  pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, 842, 595)
-  pctx.fillStyle = '#000'
-  pctx.font = '12px "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif'
-  for (let i = 0; i < Math.min(previewLines.length, 35); i++) {
-    pctx.fillText(previewLines[i].slice(0, 120), 20, 20 + (i+1)*14)
+  // Preview: render all pages of text to canvas
+  const linesPerPage = 40
+  const totalPreviewPages = Math.ceil(previewLines.length / linesPerPage) || 1
+  const previewUrls: string[] = []
+  for (let p = 0; p < totalPreviewPages; p++) {
+    const pc = document.createElement('canvas')
+    pc.width = 842; pc.height = 595
+    const pctx = pc.getContext('2d')!
+    pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, 842, 595)
+    pctx.fillStyle = '#000'
+    pctx.font = '12px "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif'
+    const pageLines = previewLines.slice(p*linesPerPage, (p+1)*linesPerPage)
+    pageLines.forEach((l, i) => pctx.fillText(l.slice(0, 120), 20, 20 + (i+1)*14))
+    pctx.fillStyle = '#999'
+    pctx.fillText(`${p+1}/${totalPreviewPages}`, 780, 580)
+    previewUrls.push(pc.toDataURL('image/jpeg', 0.7))
   }
-  const previewUrls = [previewCanvas.toDataURL('image/jpeg', 0.7)]
 
   return { blob, fileName: file.name.replace(/\.pdf$/i, '.docx'), previewUrls }
 }
