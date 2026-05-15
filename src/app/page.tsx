@@ -333,8 +333,6 @@ export default function Home() {
             <div className="space-y-6">
               <FileUpload onFileSelect={handleFileSelect} />
 
-              <PptxToPdf />
-
               {/* Settings card */}
               <Card>
                 <CardContent className="p-5 space-y-4">
@@ -394,6 +392,8 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
+
+              <PptxToPdf />
 
               {error && (
                 <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
