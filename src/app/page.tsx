@@ -35,7 +35,7 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 - 元テキスト・原文の丸写しセクション禁止
 - ページ番号言及禁止
 
-【重要強調】重要なキーワード、核心的な結論、カギとなる数値は必ず **太字** で強調
+【重要強調】重要なポイントや数値は **太字** で強調
 
 【出力構成】
 1. タイトルと基本情報
@@ -56,7 +56,7 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 - 禁止原文照抄段落
 - 禁止提及页码
 
-【重点强调】重要关键词、核心结论、关键数字必须用 **加粗** 强调
+【重点强调】重要内容和数字用 **加粗** 强调
 
 【输出结构】
 1. 标题与基本信息
@@ -77,7 +77,7 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 - No verbatim copying of the original text
 - No page number mentions
 
-【Highlighting】Important keywords, core conclusions, and key figures must be **bold**
+【Highlighting】Important points and figures must be **bold**
 
 【Output Structure】
 1. Title & basic info
@@ -98,7 +98,7 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 - 원문 그대로 복사 금지
 - 페이지 번호 언급 금지
 
-【중요 강조】중요한 키워드, 핵심 결론, 주요 수치는 반드시 **굵게** 강조
+【중요 강조】중요한 포인트와 수치는 **굵게**
 
 【출력 구성】
 1. 제목과 기본 정보
