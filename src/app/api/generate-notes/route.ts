@@ -53,6 +53,33 @@ async function callDeepSeek(prompt: string, apiKey: string): Promise<string> {
   return data.choices[0].message.content.trim()
 }
 
+async function callGroq(prompt: string, apiKey: string): Promise<string> {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-4-scout-17b-16e-instruct',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 8192
+    })
+  })
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '')
+    throw new Error(`Groq API error ${response.status}: ${errText}`)
+  }
+
+  const data = await response.json()
+  return data.choices[0].message.content.trim()
+}
+
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 9000)
@@ -102,9 +129,10 @@ export async function POST(request: NextRequest) {
     }
 
     const deepseekKey = process.env.DEEPSEEK_API_KEY || ''
+    const groqKey = process.env.GROQ_API_KEY || ''
     const geminiKey = process.env.GEMINI_API_KEY || ''
 
-    if (!deepseekKey && !geminiKey) {
+    if (!deepseekKey && !groqKey && !geminiKey) {
       return NextResponse.json({ error: 'AI APIキーが設定されていません' }, { status: 400 })
     }
 
@@ -116,37 +144,39 @@ export async function POST(request: NextRequest) {
 ${truncated}`
 
     let result = ''
+    const errors: string[] = []
 
-    let geminiError = ''
-    let deepseekError = ''
-
-    if (geminiKey) {
+    // Groq first (free, no quota issues)
+    if (groqKey) {
       try {
-        result = await callGemini(prompt, geminiKey)
+        result = await callGroq(prompt, groqKey)
       } catch (e: any) {
-        geminiError = e.message || String(e)
-        console.error('Gemini error:', e)
+        errors.push('Groq: ' + (e.message || String(e)))
       }
     }
 
+    // DeepSeek second (best CJK quality)
     if (!result && deepseekKey) {
       try {
         result = await callDeepSeek(prompt, deepseekKey)
       } catch (e: any) {
-        deepseekError = e.message || String(e)
-        console.error('DeepSeek error:', e)
+        errors.push('DeepSeek: ' + (e.message || String(e)))
+      }
+    }
+
+    // Gemini last
+    if (!result && geminiKey) {
+      try {
+        result = await callGemini(prompt, geminiKey)
+      } catch (e: any) {
+        errors.push('Gemini: ' + (e.message || String(e)))
       }
     }
 
     if (!result) {
       return NextResponse.json({
         error: 'AI生成に失敗しました',
-        debug: {
-          hasGemini: !!geminiKey,
-          hasDeepSeek: !!deepseekKey,
-          geminiError: geminiError || null,
-          deepseekError: deepseekError || null,
-        }
+        debug: { errors: errors.join(' | ') || 'no keys configured' }
       }, { status: 500 })
     }
 
