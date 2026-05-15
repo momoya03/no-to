@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'empty' }, { status: 400 })
     }
 
-    const groqKey = process.env.GROQ_API_KEY || ''
+    const groqKeys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2, process.env.GROQ_API_KEY_3].filter(Boolean) as string[]
     const deepseekKey = process.env.DEEPSEEK_API_KEY || ''
     const geminiKey = process.env.GEMINI_API_KEY || ''
 
@@ -138,8 +138,9 @@ export async function POST(request: NextRequest) {
 
     let result = ''
 
-    if (groqKey) {
-      try { result = await callGroq(prompt, groqKey) } catch {}
+    for (const key of groqKeys) {
+      try { result = await callGroq(prompt, key) } catch {}
+      if (result) break
     }
     if (!result && deepseekKey) {
       try { result = await callDeepSeek(prompt, deepseekKey) } catch {}
