@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Moon, Sun, FileText, Sparkles, ArrowRight } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { createFullTextStream } from '@/services/aiService'
+import { createFullTextStream, enrichText } from '@/services/aiService'
 import { extractPDFText } from '@/services/pdfService'
 import { extractWordText } from '@/services/wordService'
 import { extractPPTXText } from '@/services/pptxService'
@@ -272,6 +272,11 @@ export default function Home() {
         aiNotes = localNotes.map(p => p.noteContent).join('\n\n')
       } else {
         aiUsed = true
+        // Post-process: add color highlights and annotations
+        aiNotes = aiNotes
+          .replace(/^(#{1,2}\s+.+)$/gm, '<span style="color:#2d7d46">$1</span>')
+          .replace(/(?<![#*\-\s\d\w])(\d{1,3}(?:,\d{3})*|\d+)(?![）\d\w])/g, '<span style="color:#c4a035">$1</span>')
+        aiNotes = enrichText(aiNotes)
         setQuota(await incrementQuota())
       }
       setProcessingProgress(100)

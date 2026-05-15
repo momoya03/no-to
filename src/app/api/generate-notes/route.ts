@@ -93,7 +93,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<{ text: strin
   } finally { clearTimeout(t) }
 }
 
-function truncateText(text: string, maxTokens = 5000): string {
+function truncateText(text: string, maxTokens = 7000): string {
   const maxChars = maxTokens * 3
   if (text.length <= maxChars) return text
   const sentences = text.split(/(?<=[。！？.!?])\s+/)
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'empty' }, { status: 400 })
     }
 
-    const truncated = truncateText(content.trim(), 5000)
+    const truncated = truncateText(content.trim(), 7000)
     const prompt = `以下の資料を解析し学習ノートを作成してください：\n\n${truncated}`
 
     // Priority: DeepSeek > Gemini > Groq (ranked by output quality)

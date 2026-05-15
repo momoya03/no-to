@@ -522,7 +522,7 @@ const CN_ANNOTATION_DICT: Record<string, string> = {
   'メカニズム': '机制',
 }
 
-function enrichText(text: string): string {
+export function enrichText(text: string): string {
   let result = text
 
   for (const [kanji, reading] of Object.entries(READING_DICT)) {
