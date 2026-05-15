@@ -211,24 +211,25 @@ export default function Home() {
       setProcessingStep('AIがノートを生成中...')
       setProcessingProgress(75)
 
-      // Simulate incremental progress while waiting for AI response
-      let tick = 0
+      // Time-based progress — never gets stuck, always moving
+      const aiStartTime = Date.now()
       const aiProgressTimer = setInterval(() => {
-        tick++
-        const simulated = Math.min(75 + tick * 2, 88)
-        setProcessingProgress(simulated)
-        if (tick === 1) setProcessingStep('AIがノートを生成中...')
-        if (tick === 3) setProcessingStep('重要なポイントを抽出中...')
-        if (tick === 5) setProcessingStep('ノートを構成中...')
-      }, 800)
+        const elapsed = (Date.now() - aiStartTime) / 1000
+        const progress = Math.min(75 + Math.round(elapsed * 0.65), 93)
+        setProcessingProgress(progress)
+        if (elapsed < 4) setProcessingStep('AIがノートを生成中...')
+        else if (elapsed < 8) setProcessingStep('重要なポイントを抽出中...')
+        else setProcessingStep('ノートを構成中...')
+      }, 600)
 
       let aiNotes = ''
       try {
         aiNotes = await generateNotesWithAI(fullText, pdfLang, noteLang, () => {})
       } catch (e) { console.error('AI generation failed:', e) }
       clearInterval(aiProgressTimer)
-      setProcessingProgress(92)
+      setProcessingProgress(96)
       setProcessingStep('ノートを整形中...')
+      await new Promise(r => setTimeout(r, 300))
 
       if (!aiNotes) {
         const { generateNotesLocal } = await import('@/services/aiService')
@@ -237,7 +238,8 @@ export default function Home() {
       } else {
         setQuota(await incrementQuota())
       }
-      setProcessingProgress(95)
+      setProcessingProgress(100)
+      setProcessingStep('完了')
 
       const notePage: NotePage = {
         pageNumber: 1,
@@ -252,9 +254,6 @@ export default function Home() {
         pages: [notePage],
         createdAt: new Date()
       }
-
-      setProcessingProgress(100)
-      setProcessingStep('完了')
 
       const sanitizedPdfPages = pdfPages.map(page => ({
         pageNumber: page.pageNumber,
