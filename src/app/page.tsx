@@ -246,10 +246,18 @@ export default function Home() {
         else setProcessingStep('ノートを構成中...')
       }, 600)
 
+      // Check quota BEFORE calling AI — save real API calls
+      const currentQuota = await getQuota()
+      const overLimit = currentQuota.count >= 1500
+
       let aiNotes = ''
-      try {
-        aiNotes = await generateNotesWithAI(fullText, pdfLang, noteLang, () => {})
-      } catch (e) { console.error('AI generation failed:', e) }
+      if (overLimit) {
+        console.warn('[quota] 1日1500回制限に達したためAIをスキップします')
+      } else {
+        try {
+          aiNotes = await generateNotesWithAI(fullText, pdfLang, noteLang, () => {})
+        } catch (e) { console.error('AI generation failed:', e) }
+      }
       clearInterval(aiProgressTimer)
       setProcessingProgress(96)
       setProcessingStep('ノートを整形中...')
