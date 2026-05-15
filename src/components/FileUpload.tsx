@@ -1,11 +1,25 @@
 'use client'
 
 import React, { useCallback, useState } from 'react'
-import { Upload, File, X } from 'lucide-react'
+import { Upload, File, FileText, Presentation, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatFileSize } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+]
+
+function getFileIcon(fileName: string) {
+  const ext = fileName.split('.').pop()?.toLowerCase()
+  if (ext === 'pdf') return <File className="w-6 h-6 text-red-500" />
+  if (ext === 'docx') return <FileText className="w-6 h-6 text-blue-500" />
+  if (ext === 'pptx') return <Presentation className="w-6 h-6 text-orange-500" />
+  return <File className="w-6 h-6 text-primary" />
+}
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void
@@ -31,17 +45,17 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
     setIsDragging(false)
 
     const files = Array.from(e.dataTransfer.files)
-    const pdfFile = files.find(f => f.type === 'application/pdf')
+    const validFile = files.find(f => ALLOWED_TYPES.includes(f.type))
 
-    if (pdfFile) {
-      setSelectedFile(pdfFile)
-      onFileSelect(pdfFile)
+    if (validFile) {
+      setSelectedFile(validFile)
+      onFileSelect(validFile)
     }
   }, [onFileSelect])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file && file.type === 'application/pdf') {
+    if (file && ALLOWED_TYPES.includes(file.type)) {
       setSelectedFile(file)
       onFileSelect(file)
     }
@@ -69,7 +83,7 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
             >
               <input
                 type="file"
-                accept=".pdf,application/pdf"
+                accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 onChange={handleFileChange}
                 className="hidden"
                 id="file-upload"
@@ -86,10 +100,10 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
                 </div>
                 <div className="bg-primary text-primary-foreground rounded-full px-8 py-3.5 text-base font-bold inline-flex items-center gap-2.5 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all active:scale-95">
                   <Upload className="h-5 w-5" />
-                  PDF を選択
+                  ファイルを選択
                 </div>
                 <p className="text-xs text-muted-foreground mt-4">
-                  ドラッグ＆ドロップでも追加できます
+                  ドラッグ＆ドロップでも追加できます（PDF / Word / PowerPoint）
                 </p>
               </label>
             </div>
@@ -97,7 +111,7 @@ export function FileUpload({ onFileSelect, disabled = false }: FileUploadProps) 
             <div className="flex items-center justify-between p-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <File className="w-6 h-6 text-primary" />
+                  {getFileIcon(selectedFile.name)}
                 </div>
                 <div>
                   <p className="font-semibold truncate max-w-[200px] sm:max-w-[300px]">

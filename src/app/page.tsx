@@ -10,6 +10,8 @@ import { Moon, Sun, FileText, Sparkles, ArrowRight } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { createFullTextStream } from '@/services/aiService'
 import { extractPDFText } from '@/services/pdfService'
+import { extractWordText } from '@/services/wordService'
+import { extractPPTXText } from '@/services/pptxService'
 import { PDFPage, NoteDocument, NotePage } from '@/types'
 import { generateId } from '@/lib/utils'
 import { getQuota, incrementQuota } from '@/lib/quota'
@@ -21,6 +23,14 @@ const LANG_OPTIONS: Record<string, string> = {
   zh: '中文',
   en: 'English',
   ko: '한국어',
+}
+
+function getFileType(fileName: string): 'pdf' | 'word' | 'pptx' {
+  const ext = fileName.split('.').pop()?.toLowerCase()
+  if (ext === 'pdf') return 'pdf'
+  if (ext === 'docx') return 'word'
+  if (ext === 'pptx') return 'pptx'
+  return 'pdf'
 }
 
 function buildSystemPrompt(pdfLang: string, noteLang: string): string {
@@ -113,7 +123,7 @@ function buildSystemPrompt(pdfLang: string, noteLang: string): string {
 
   const l = labels[noteLang] || labels.ja
 
-  return `${l.title} 元のPDFは${LANG_OPTIONS[pdfLang] || '日本語'}で書かれています。${l.dir}
+  return `${l.title} 元の資料は${LANG_OPTIONS[pdfLang] || '日本語'}で書かれています。${l.dir}
 
 ${l.rules}
 
@@ -188,20 +198,32 @@ export default function Home() {
   const handleFileSelect = useCallback(async (file: File) => {
     setIsProcessing(true)
     setProcessingProgress(0)
-    setProcessingStep('PDFを読み込み中...')
+    setProcessingStep('ファイルを読み込み中...')
     setError(null)
 
     try {
+      const fileType = getFileType(file.name)
       let pdfPages: PDFPage[] = []
 
-      setProcessingStep('PDFテキスト抽出中...')
-      pdfPages = await extractPDFText(file, (page, total) => {
-        setProcessingProgress(Math.round((page / total) * 60))
-      })
+      setProcessingStep('テキスト抽出中...')
 
-      const ocrCount = pdfPages.filter(p => p.isOcr).length
-      if (ocrCount > 0) {
-        setProcessingStep(`${ocrCount}ページが画像形式のためOCRできません`)
+      if (fileType === 'pdf') {
+        pdfPages = await extractPDFText(file, (page, total) => {
+          setProcessingProgress(Math.round((page / total) * 60))
+        })
+        const ocrCount = pdfPages.filter(p => p.isOcr).length
+        if (ocrCount > 0) {
+          setProcessingStep(`${ocrCount}ページが画像形式のためOCRできません`)
+        }
+      } else if (fileType === 'word') {
+        const text = await extractWordText(file)
+        setProcessingProgress(60)
+        pdfPages = [{ pageNumber: 1, text, isOcr: false }]
+      } else {
+        const text = await extractPPTXText(file, (slide, total) => {
+          setProcessingProgress(Math.round((slide / total) * 60))
+        })
+        pdfPages = [{ pageNumber: 1, text, isOcr: false }]
       }
 
       setProcessingStep('テキスト前処理中...')
@@ -316,7 +338,7 @@ export default function Home() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                     <div className="flex items-center gap-2 flex-1">
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm text-muted-foreground shrink-0">PDFの言語</span>
+                      <span className="text-sm text-muted-foreground shrink-0">資料の言語</span>
                       <select
                         value={pdfLang}
                         onChange={(e) => setPdfLang(e.target.value)}
