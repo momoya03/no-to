@@ -144,7 +144,9 @@ export function NotesViewer({
                   : 'px-1 py-0.5 rounded font-bold'
                 }
                 {...props}
-              />
+              >
+                {children}
+              </strong>
             )
           },
           em: ({ ...props }) => <em className="italic text-gray-600 dark:text-gray-400" {...props} />,
