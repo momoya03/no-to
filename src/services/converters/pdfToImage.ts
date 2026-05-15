@@ -32,7 +32,13 @@ async function convert(
     const base64 = dataUrl.split(',')[1]
     zip.file(`page_${String(i).padStart(3,'0')}.png`, base64, { base64: true })
 
-    previewUrls.push(dataUrl)
+    // Low-res preview (avoid memory crash for large PDFs)
+    const pvCanvas = document.createElement('canvas')
+    const pvScale = Math.min(400 / canvas.width, 300 / canvas.height)
+    pvCanvas.width = canvas.width * pvScale
+    pvCanvas.height = canvas.height * pvScale
+    pvCanvas.getContext('2d')!.drawImage(canvas, 0, 0, pvCanvas.width, pvCanvas.height)
+    previewUrls.push(pvCanvas.toDataURL('image/jpeg', 0.6))
   }
 
   onProgress('ZIPを作成中...', 97)
@@ -48,7 +54,7 @@ export const pdfToImage: Converter = {
   id: 'pdf-to-image',
   label: 'PDF → 画像',
   fromExt: 'pdf',
-  toExt: 'zip',
+  toExt: 'image',
   acceptExt: '.pdf',
   acceptMime: ['application/pdf'],
   available: true,

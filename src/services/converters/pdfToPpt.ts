@@ -114,7 +114,12 @@ async function convert(
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${i}.png"/>
 </Relationships>`)
 
-    previewUrls.push(canvas.toDataURL('image/jpeg', 0.7))
+    const pvCanvas = document.createElement('canvas')
+    const pvScale = Math.min(400 / canvas.width, 300 / canvas.height)
+    pvCanvas.width = canvas.width * pvScale
+    pvCanvas.height = canvas.height * pvScale
+    pvCanvas.getContext('2d')!.drawImage(canvas, 0, 0, pvCanvas.width, pvCanvas.height)
+    previewUrls.push(pvCanvas.toDataURL('image/jpeg', 0.6))
   }
 
   onProgress('PPTXを作成中...', 95)
