@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/FileUpload'
 import { ProcessingIndicator } from '@/components/ProcessingIndicator'
-import DinoGame from '@/components/DinoGame'
+import MoleLoading from '@/components/MoleLoading'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Moon, Sun, FileText, Sparkles, ArrowRight } from 'lucide-react'
@@ -191,16 +191,27 @@ export default function Home() {
   const [quota, setQuota] = useState({ date: '', count: 0 })
   const [pdfLang, setPdfLang] = useState('ja')
   const [noteLang, setNoteLang] = useState('ja')
+  const [processingDone, setProcessingDone] = useState(false)
+  const [moleDone, setMoleDone] = useState(false)
 
   useEffect(() => {
     getQuota().then(setQuota)
   }, [])
+
+  useEffect(() => {
+    if (processingDone && moleDone) {
+      const t = setTimeout(() => router.push('/notes'), 1200)
+      return () => clearTimeout(t)
+    }
+  }, [processingDone, moleDone, router])
 
   const handleFileSelect = useCallback(async (file: File) => {
     setIsProcessing(true)
     setProcessingProgress(0)
     setProcessingStep('ファイルを読み込み中...')
     setError(null)
+    setProcessingDone(false)
+    setMoleDone(false)
 
     try {
       const fileType = getFileType(file.name)
@@ -299,9 +310,7 @@ export default function Home() {
         return
       }
 
-      setTimeout(() => {
-        router.push('/notes')
-      }, 500)
+      setProcessingDone(true)
 
     } catch (err) {
       console.error('Processing error:', err)
@@ -401,8 +410,12 @@ export default function Home() {
               )}
             </div>
           ) : (
-            <div className="space-y-5">
-              <DinoGame />
+            <div className="space-y-4">
+              <MoleLoading
+                started={isProcessing}
+                complete={processingDone}
+                onAllDone={() => setMoleDone(true)}
+              />
               <ProcessingIndicator
                 step={processingStep}
                 progress={processingProgress}
