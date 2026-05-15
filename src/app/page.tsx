@@ -157,13 +157,15 @@ async function generateNotesWithAI(
   onProgress('AIによるノート生成中...', 0)
 
   // Split long text into chunks for comprehensive processing
-  const chunks = splitText(fullText, 15000)
+  const chunks = splitText(fullText, 25000)
   const allNotes: string[] = []
 
   for (let i = 0; i < chunks.length; i++) {
     onProgress(`AI生成中 (${i + 1}/${chunks.length})...`, Math.round((i / chunks.length) * 80))
 
-    const chunkPrompt = `以下の資料のパート${i + 1}/${chunks.length}を解析し学習ノートを作成してください：\n\n${chunks[i]}`
+    const chunkPrompt = chunks.length === 1
+      ? `以下の資料を解析し学習ノートを作成してください：\n\n${chunks[i]}`
+      : `以下の資料のパート${i + 1}/${chunks.length}を解析し学習ノートを作成してください：\n\n${chunks[i]}`
 
     // Try client-side Gemini first
     if (GEMINI_KEY) {

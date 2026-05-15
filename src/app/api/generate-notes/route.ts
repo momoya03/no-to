@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const { content } = await request.json()
     if (!content?.trim()) return NextResponse.json({ error: 'empty' }, { status: 400 })
 
-    const prompt = `以下の資料を解析し学習ノートを作成してください：\n\n${content.trim()}`
+    const prompt = content.trim()
 
     // Priority: DeepSeek > Gemini > Groq keys
     const ds = process.env.DEEPSEEK_API_KEY || ''
