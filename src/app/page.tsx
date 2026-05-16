@@ -188,21 +188,29 @@ async function generateNotesWithAI(
       } catch {}
     }
 
-    // Server API
+    // Server API with retry (handles temporary rate limits)
     if (!notes) {
-      try {
-        const r = await fetch('/api/generate-notes', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: chunkPrompt })
-        })
-        if (r.ok) {
-          const d = await r.json()
-          notes = d.notes || ''
+      for (let attempt = 0; attempt < 3 && !notes; attempt++) {
+        if (attempt > 0) {
+          onProgress(`AI生成中 (${i + 1}/${chunks.length})... リトライ${attempt}`, Math.round((i / chunks.length) * 80))
+          await new Promise(r => setTimeout(r, 3000 * attempt))
         }
-      } catch {}
+        try {
+          const r = await fetch('/api/generate-notes', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: chunkPrompt })
+          })
+          if (r.ok) {
+            const d = await r.json()
+            notes = d.notes || ''
+          }
+        } catch {}
+      }
     }
 
     if (notes) allNotes.push(notes)
+    // Small delay between chunks to avoid rate limiting
+    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 500))
   }
 
   if (allNotes.length > 0) return allNotes.join('\n\n---\n\n')
