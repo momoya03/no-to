@@ -101,18 +101,14 @@ export async function POST(request: NextRequest) {
     const prompt = content.trim()
     const errors: string[] = []
 
-    const ds = process.env.DEEPSEEK_API_KEY || ''
     const gm = process.env.GEMINI_API_KEY || ''
     const groqKeys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2, process.env.GROQ_API_KEY_3].filter(Boolean) as string[]
+    const dsKeys = [process.env.DEEPSEEK_API_KEY, process.env.DEEPSEEK_API_KEY_2, process.env.DEEPSEEK_API_KEY_3].filter(Boolean) as string[]
 
     let result = ''
 
-    if (ds) {
-      const r = await callDeepSeek(prompt, ds)
-      if (r.text) result = r.text
-      else if (r.error) errors.push(r.error)
-    }
-    if (!result && gm) {
+    // Priority: Gemini → Groq → DeepSeek (paid key last)
+    if (gm) {
       const r = await callGemini(prompt, gm)
       if (r.text) result = r.text
       else if (r.error) errors.push(r.error)
@@ -124,12 +120,19 @@ export async function POST(request: NextRequest) {
         else if (r.error) errors.push(r.error)
       }
     }
+    if (!result) {
+      for (const k of dsKeys) {
+        const r = await callDeepSeek(prompt, k)
+        if (r.text) { result = r.text; break }
+        else if (r.error) errors.push(r.error)
+      }
+    }
 
     if (!result) {
       return NextResponse.json({
         error: 'all providers exhausted',
         details: errors.length > 0 ? errors : ['all providers returned empty (rate limited or no keys)'],
-        keysFound: { deepseek: !!ds, gemini: !!gm, groq: groqKeys.length }
+        keysFound: { gemini: !!gm, groq: groqKeys.length, deepseek: dsKeys.length }
       }, { status: 500 })
     }
     return NextResponse.json({ notes: result })
