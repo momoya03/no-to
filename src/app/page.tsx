@@ -323,10 +323,15 @@ export default function Home() {
         aiNotes = localNotes.map(p => p.noteContent).join('\n\n')
       } else {
         aiUsed = true
-        // Post-process: add color highlights and annotations
-        aiNotes = aiNotes
-          .replace(/^(#{1,2}\s+.+)$/gm, '<span style="color:#2d7d46">$1</span>')
-          .replace(/(?<![#*\-\s\d\w])(\d{1,3}(?:,\d{3})*|\d+)(?![）\d\w])/g, '<span style="color:#c4a035">$1</span>')
+        // Post-process: marker-style highlights (background-color, not text color)
+        // 1. Subheadings: light green marker
+        aiNotes = aiNotes.replace(/^(#{1,2}\s+.+)$/gm,
+          '<span style="background-color:#c8e6c9;padding:2px 6px">$1</span>')
+        // 2. Numbers: yellow marker (catch integers, decimals, with units)
+        aiNotes = aiNotes.replace(/(?<![-*#>\.\w])(\d[\d,.]*)(%|円|ドル|元|人|回|年|月|日|倍|万|億|兆|個|件|社|歳|時|分|秒|m|km|kg|g|℃)?/g,
+          (_: string, num: string, unit: string) =>
+            `<span style="background-color:#fff9c4">${num}${unit || ''}</span>`)
+        // 3. Enrich with annotations
         aiNotes = enrichText(aiNotes)
         setQuota(await incrementQuota())
       }

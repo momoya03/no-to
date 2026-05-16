@@ -14,7 +14,8 @@ const SYSTEM_PROMPT = `あなたはプロのノート作成アシスタントで
 出力形式：
 # 資料タイトル
 # 概要（4-6文で全体像）
-# 各セクションの詳細（見出し＋詳しい説明＋重要ポイント箇条書き）`
+# 全体のアウトライン（主要セクションを階層で整理）
+# 各セクションの詳細（見出し＋詳しい説明＋重要ポイント箇条書き。要点間に空行を入れる）`
 
 async function callGroq(prompt: string, apiKey: string): Promise<{ text: string; rateLimited: boolean }> {
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
