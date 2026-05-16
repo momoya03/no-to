@@ -156,46 +156,56 @@ async function generateNotesWithAI(
 ): Promise<string> {
   onProgress('AIによるノート生成中...', 0)
 
-  // Truncate to fit within Vercel 10s free tier timeout
-  const maxLen = 3500
-  const prompt = fullText.length > maxLen
-    ? `以下の資料（抜粋）から学習ノートを作成してください：\n\n${fullText.slice(0, maxLen)}\n\n（資料が長いため冒頭部分のみ抜粋しています。重要な内容をできるだけ詳しくノートにまとめてください）`
-    : `以下の資料を解析し学習ノートを作成してください：\n\n${fullText}`
+  // Split into chunks that fit within Vercel free tier 10s timeout
+  const CHUNK_SIZE = 3500
+  const chunks = splitText(fullText, CHUNK_SIZE)
+  const allNotes: string[] = []
 
-  // Try client-side Gemini first
-  if (GEMINI_KEY) {
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `${buildSystemPrompt(pdfLang, noteLang)}\n\n${prompt}` }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-          })
+  for (let i = 0; i < chunks.length; i++) {
+    onProgress(`AI生成中 (${i + 1}/${chunks.length})...`, Math.round((i / chunks.length) * 80))
+
+    const chunkPrompt = chunks.length === 1
+      ? `以下の資料を解析し学習ノートを作成してください：\n\n${chunks[i]}`
+      : `以下の資料のパート${i + 1}/${chunks.length}を解析し学習ノートを作成してください：\n\n${chunks[i]}`
+
+    let notes = ''
+
+    // Client-side Gemini
+    if (GEMINI_KEY) {
+      try {
+        const r = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `${buildSystemPrompt(pdfLang, noteLang)}\n\n${chunkPrompt}` }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+            }) }
+        )
+        if (r.ok) {
+          const d = await r.json()
+          notes = d.candidates?.[0]?.content?.parts?.[0]?.text || ''
         }
-      )
-      if (response.ok) {
-        const data = await response.json()
-        const notes = data.candidates?.[0]?.content?.parts?.[0]?.text
-        if (notes) return notes
-      }
-    } catch {}
+      } catch {}
+    }
+
+    // Server API
+    if (!notes) {
+      try {
+        const r = await fetch('/api/generate-notes', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: chunkPrompt })
+        })
+        if (r.ok) {
+          const d = await r.json()
+          notes = d.notes || ''
+        }
+      } catch {}
+    }
+
+    if (notes) allNotes.push(notes)
   }
 
-  // Server API fallback
-  try {
-    const response = await fetch('/api/generate-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: prompt })
-    })
-    if (response.ok) {
-      const data = await response.json()
-      if (data.notes) return data.notes
-    }
-  } catch {}
-
+  if (allNotes.length > 0) return allNotes.join('\n\n---\n\n')
   return ''
 }
 
