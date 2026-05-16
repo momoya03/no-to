@@ -391,6 +391,39 @@ function chunkText(text: string, maxLen: number): string[] {
   return chunks.length > 0 ? chunks : [text]
 }
 
+// ========== 8b. Fallback Section Builder ==========
+
+function buildFallbackSections(text: string, chunkIndex: number): NoteSection[] {
+  if (!text?.trim()) return []
+
+  // Split into paragraphs by double newline or detected headings
+  const paragraphs = text.split(/\n\n+|(?=\d+[\.\、\)])|(?=第[一二三四五六七八九十\d]+[章節])|(?=[■□◆◇▼▽◎●○])/)
+    .map(p => p.trim())
+    .filter(p => p.length > 15)
+
+  if (paragraphs.length === 0) return []
+
+  const sections: NoteSection[] = []
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i]
+    // Use first 40 chars as heading
+    const heading = p.length > 50 ? p.slice(0, 47) + '...' : p
+    // Split remaining into bullet points
+    const sentences = p.split(/(?<=[。！？.!?])\s*/).filter(s => s.trim().length > 8)
+    const bullets = sentences.length > 0
+      ? sentences.slice(0, 4).map(s => s.trim())
+      : [p]
+
+    sections.push({
+      id: `fs${chunkIndex + 1}_${i + 1}`,
+      heading,
+      bullets
+    })
+  }
+
+  return sections
+}
+
 // ========== 9. Main Orchestrator ==========
 
 export async function generateStructuredNotes(
@@ -456,7 +489,14 @@ export async function generateStructuredNotes(
       }
     }
 
-    console.warn(`[noteGen] chunk ${i + 1}/${chunks.length} failed completely`)
+    // Fallback: extract sections from raw text so content isn't lost
+    const fbSections = buildFallbackSections(chunks[i], i)
+    if (fbSections.length > 0) {
+      structuredChunks.push({ title: `パート ${i + 1}`, sections: fbSections })
+      console.log(`[noteGen] chunk ${i + 1}/${chunks.length}: ${fbSections.length} fallback sections`)
+    } else {
+      console.warn(`[noteGen] chunk ${i + 1}/${chunks.length} failed completely`)
+    }
     if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 3000))
   }
 
