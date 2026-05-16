@@ -154,11 +154,6 @@ export default function Home() {
         structuredNote = localNotes[0]?.structuredNote
       } else {
         aiUsed = true
-        // Post-process: marker-style highlights
-        // Numbers: yellow marker background
-        aiNotes = aiNotes.replace(/(?<![-*#>\.\w#])(\d[\d,.]*)(%|円|ドル|元|人|回|年|月|日|倍|万|億|兆|個|件|社|歳|時|分|秒|m|km|kg|g|℃)?/g,
-          (_: string, num: string, unit: string) =>
-            `<span style="background-color:#fff9c4">${num}${unit || ''}</span>`)
         // Enrich with annotations
         aiNotes = enrichText(aiNotes)
         setQuota(await incrementQuota())

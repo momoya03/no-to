@@ -430,7 +430,7 @@ export async function generateStructuredNotes(
   onProgress: (msg: string, pct: number) => void
 ): Promise<{ note: StructuredNote; usedAI: boolean }> {
   const systemPrompt = buildJSONPrompt(pdfLang, noteLang)
-  const chunks = chunkText(fullText, 4000)
+  const chunks = chunkText(fullText, 2500)
 
   const structuredChunks: StructuredNote[] = []
 
