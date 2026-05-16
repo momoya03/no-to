@@ -40,10 +40,9 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 {
   "title": "資料タイトル",
   "sections": [
-    {
-      "heading": "端的な見出し",
-      "bullets": ["要点を自分の言葉で書く", "次の要点"]
-    }
+    { "heading": "目次", "bullets": ["見出し1", "見出し2", "..."] },
+    { "heading": "端的な見出し", "bullets": ["要点を自分の言葉で", "..."] },
+    { "heading": "まとめ", "bullets": ["要点1", "要点2", "要点3"] }
   ]
 }`,
     },
@@ -69,10 +68,9 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 {
   "title": "资料标题",
   "sections": [
-    {
-      "heading": "精炼标题",
-      "bullets": ["用自己的话写要点", "下一个要点"]
-    }
+    { "heading": "目录", "bullets": ["标题1", "标题2", "..."] },
+    { "heading": "精炼标题", "bullets": ["用自己的话写要点", "..."] },
+    { "heading": "总结", "bullets": ["要点1", "要点2", "要点3"] }
   ]
 }`,
     },
@@ -98,10 +96,9 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 {
   "title": "Document Title",
   "sections": [
-    {
-      "heading": "Concise heading",
-      "bullets": ["Key point in your own words", "Next point"]
-    }
+    { "heading": "Outline", "bullets": ["Heading 1", "Heading 2", "..."] },
+    { "heading": "Concise heading", "bullets": ["Key point", "..."] },
+    { "heading": "Summary", "bullets": ["Takeaway 1", "Takeaway 2", "Takeaway 3"] }
   ]
 }`,
     },
@@ -127,10 +124,9 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 {
   "title": "자료 제목",
   "sections": [
-    {
-      "heading": "간결한 제목",
-      "bullets": ["자신의 말로 요점 작성", "다음 요점"]
-    }
+    { "heading": "목차", "bullets": ["제목1", "제목2", "..."] },
+    { "heading": "간결한 제목", "bullets": ["자신의 말로 요점 작성", "..."] },
+    { "heading": "요약", "bullets": ["핵심1", "핵심2", "핵심3"] }
   ]
 }`,
     },
