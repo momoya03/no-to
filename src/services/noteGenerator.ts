@@ -19,112 +19,108 @@ interface ValidationIssue {
 function buildJSONPrompt(pdfLang: string, noteLang: string): string {
   const labels: Record<string, { title: string; dir: string; rules: string; schema: string }> = {
     ja: {
-      title: 'あなたはプロフェッショナルなノート作成アシスタントです。',
-      dir: '学習用ノートを生成してください。',
-      rules: `【絶対禁止】
-- 表（テーブル）禁止
-- 捏造禁止、不明点は「記載なし」
-- 参考文献・引用文献・出典リストは絶対に出力しない
-- 元テキスト・原文の丸写しセクション禁止
-- ページ番号言及禁止
+      title: 'あなたはプロのノート作成アシスタントです。',
+      dir: '授業に出なかった学生がこのノートを読めば内容を理解できるように整理してください。',
+      rules: `【ルール】
+- 表禁止、捏造禁止、参考文献禁止、ページ番号禁止
+- 原文の丸写し禁止。自分の言葉で再構成する
+- 重要な数字・日付・キーワードは **太字** で強調
+- 難読漢字や専門用語には（注：説明）を付ける。必要なものだけ、控えめに
 
-【重要強調】重要なポイントや数値は **太字** で強調
-
-【難解用語】特に難しい専門用語や特殊な読み方の漢字には、直後に（注：簡潔な説明or読み方）を付けてください。多用せず、本当に難しいものだけに。`,
-      schema: `【出力形式】以下のJSON形式で厳密に出力してください。JSON以外のテキストは一切出力しないこと。コードブロック(\`\`\`)も不要、純粋なJSONオブジェクトのみを返すこと。
+【メリハリをつける】
+- 重要な部分・複雑な概念 → 詳しく、要点を多めに
+- 背景説明・補足情報 → 簡潔に、要点は少なく
+- セクションごとの情報量は内容の重要度に応じて変える
+- 硬直的な「1セクション何個」ルールは不要。内容が求めている分量で書く`,
+      schema: `【出力形式】以下のJSON形式で厳密に出力。JSON以外のテキストは一切出さないこと。
 
 {
   "title": "資料タイトル",
   "sections": [
     {
-      "heading": "セクションの見出し",
-      "bullets": ["要点1", "要点2", "要点3"]
+      "heading": "端的な見出し",
+      "bullets": ["要点を自分の言葉で書く", "次の要点"]
     }
   ]
-}
-
-見出しは短く端的に（10文字以内が目安）。各セクションは1つの見出しと3〜8個の要点を持つこと。`,
+}`,
     },
     zh: {
-      title: '你是一名专业的笔记制作助手。',
-      dir: '请生成学习笔记。',
-      rules: `【绝对禁止】
-- 禁止表格
-- 禁止捏造，不明确处标注「未记载」
-- 绝对不要输出参考文献、引用文献、出处列表
-- 禁止原文照抄段落
-- 禁止提及页码
+      title: '你是一名专业笔记助手。',
+      dir: '没上课的学生读完这份笔记应能理解课堂内容。请用自己的话重新组织。',
+      rules: `【规则】
+- 禁止表格、捏造、参考文献、页码
+- 禁止照抄原文——用自己的话改写
+- 重要数字、日期、关键词用 **加粗**
+- 难读汉字、专业术语加（注：说明），只加必要的
 
-【重点强调】重要内容和数字用 **加粗** 强调
-
-【难解术语】特别难的专业术语或罕见汉字，在其后添加（注：简要说明）。不要多用，仅在真正难解处。`,
-      schema: `【输出格式】严格按以下JSON格式输出。不要输出JSON以外的任何文字，不要用代码块(\`\`\`)包裹，只返回纯JSON对象。
+【有主有次】
+- 重要内容、复杂概念 → 详细写，要点多一些
+- 背景说明、补充信息 → 简洁写，要点少一些
+- 每个 section 的信息量根据内容重要性灵活调整
+- 不要僵化地统一每个 section 的要点数量`,
+      schema: `【输出格式】严格输出以下JSON，不要输出JSON以外的文字。
 
 {
   "title": "资料标题",
   "sections": [
     {
-      "heading": "章节标题",
-      "bullets": ["要点1", "要点2", "要点3"]
+      "heading": "精炼标题",
+      "bullets": ["用自己的话写要点", "下一个要点"]
     }
   ]
-}
-
-标题要简短精炼（10字以内）。每个 section 1个标题加3-8条要点。`,
+}`,
     },
     en: {
       title: 'You are a professional note-taking assistant.',
-      dir: 'Generate study notes.',
-      rules: `【Strictly Forbidden】
-- No tables
-- No fabrication — mark unclear items as "Not documented"
-- Never output references, citations, or source lists
-- No verbatim copying of the original text
-- No page number mentions
+      dir: 'A student who missed class should understand the material from these notes. Restate in your own words.',
+      rules: `【Rules】
+- No tables, no fabrication, no references, no page numbers
+- Do not copy verbatim — always restate
+- Bold important numbers, dates, keywords with **...**
+- Add (注：note) for difficult terms — sparingly
 
-【Highlighting】Important points and figures must be **bold**
-
-【Difficult Terms】For particularly difficult technical terms or rare readings, add (注：brief explanation) right after. Use sparingly.`,
-      schema: `【Output Format】Output STRICTLY as JSON. No other text, no code fences, just the raw JSON object.
+【Adapt to content importance】
+- Core concepts, complex ideas → more detail, more bullet points
+- Background info, supplementary notes → concise, fewer bullets
+- Vary section length based on importance, not a fixed quota
+- Don't force every section to have the same number of bullets`,
+      schema: `【Output Format】Strictly JSON only.
 
 {
   "title": "Document Title",
   "sections": [
     {
-      "heading": "Section Heading",
-      "bullets": ["Key point 1", "Key point 2", "Key point 3"]
+      "heading": "Concise heading",
+      "bullets": ["Key point in your own words", "Next point"]
     }
   ]
-}
-
-Keep headings short and concise (under 10 words). Each section: 1 heading + 3-8 bullet points.`,
+}`,
     },
     ko: {
-      title: '당신은 전문적인 노트 작성 어시스턴트입니다.',
-      dir: '학습 노트를 생성해 주세요.',
-      rules: `【절대 금지】
-- 표 금지
-- 날조 금지, 불명확한 사항은 「기재 없음」으로 표시
-- 참고문헌·인용문헌·출처 목록 절대 출력 금지
-- 원문 그대로 복사 금지
-- 페이지 번호 언급 금지
+      title: '당신은 전문 노트 작성 어시스턴트입니다.',
+      dir: '수업에 빠진 학생이 이 노트로 내용을 이해할 수 있도록, 자신의 말로 재구성하세요.',
+      rules: `【규칙】
+- 표 금지, 날조 금지, 참고문헌 금지, 페이지 번호 금지
+- 원문 그대로 복사 금지. 자신의 말로 재구성
+- 중요한 숫자·날짜·키워드는 **굵게**
+- 난독 한자·전문 용어에 (注：설명) 추가, 필요한 것만
 
-【중요 강조】중요한 포인트와 수치는 **굵게**
-
-【어려운 용어】특히 어려운 전문 용어나 특수 읽기의 한자에는 바로 뒤에 (注：간결한 설명이나 읽기)를 붙여 주세요.`,
-      schema: `【출력 형식】다음 JSON 형식으로 엄격하게 출력하세요. JSON 외 텍스트는 일체 출력 금지. 코드 블록(\`\`\`)도 불필요, 순수 JSON 객체만 반환.
+【완급 조절】
+- 중요한 내용·복잡한 개념 → 상세히, 요점 많이
+- 배경 설명·보충 정보 → 간결하게, 요점 적게
+- 섹션별 정보량은 내용의 중요도에 따라 유연하게
+- 모든 섹션에 같은 개수의 bullet을 강제하지 말 것`,
+      schema: `【출력 형식】다음 JSON 형식으로만 출력.
 
 {
   "title": "자료 제목",
   "sections": [
     {
-      "heading": "섹션 제목",
-      "bullets": ["요점 1", "요점 2", "요점 3"]
+      "heading": "간결한 제목",
+      "bullets": ["자신의 말로 요점 작성", "다음 요점"]
     }
   ]
-}
-
-제목은 짧고 간결하게 (10자 이내). 각 섹션: 1개 제목 + 3-8개 요점.`,
+}`,
     },
   }
 
