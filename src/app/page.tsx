@@ -158,7 +158,7 @@ async function generateNotesWithAI(
   console.log('[DEBUG] generateNotesWithAI started, fullText length:', fullText.length)
 
   // Split into chunks that fit within Vercel free tier 10s timeout
-  const CHUNK_SIZE = 3500
+  const CHUNK_SIZE = 1500
   const chunks = splitText(fullText, CHUNK_SIZE)
   const allNotes: string[] = []
   console.log('[DEBUG] chunks:', chunks.length, 'first chunk size:', chunks[0]?.length || 0)
