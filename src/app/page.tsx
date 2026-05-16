@@ -17,7 +17,6 @@ import { extractWordText } from '@/services/wordService'
 import { extractPPTXText } from '@/services/pptxService'
 import { PDFPage, NoteDocument, NotePage, StructuredNote } from '@/types'
 import { generateId } from '@/lib/utils'
-import { getQuota, incrementQuota } from '@/lib/quota'
 
 const LANG_OPTIONS: Record<string, string> = {
   ja: '日本語',
@@ -67,13 +66,8 @@ export default function Home() {
   const [processingProgress, setProcessingProgress] = useState(0)
   const [processingStep, setProcessingStep] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [quota, setQuota] = useState({ date: '', count: 0 })
   const [pdfLang, setPdfLang] = useState('ja')
   const [noteLang, setNoteLang] = useState('ja')
-
-  useEffect(() => {
-    getQuota().then(setQuota)
-  }, [])
 
   const handleFileSelect = useCallback(async (file: File) => {
     setIsProcessing(true)
@@ -124,23 +118,15 @@ export default function Home() {
         else setProcessingStep('ノートを構成中...')
       }, 600)
 
-      // Check quota before calling AI
-      const currentQuota = await getQuota()
-      const overLimit = currentQuota.count >= 200
-
       let aiNotes = ''
       let structuredNote: StructuredNote | undefined
-      if (overLimit) {
-        console.warn('[quota] 1日200回制限に達したためAIをスキップします')
-      } else {
-        try {
-          const result = await generateNotesWithAI(fullText, pdfLang, noteLang, () => {})
-          if (result) {
-            aiNotes = result.markdown
-            structuredNote = result.structuredNote
-          }
-        } catch (e) { console.error('AI generation failed:', e) }
-      }
+      try {
+        const result = await generateNotesWithAI(fullText, pdfLang, noteLang, () => {})
+        if (result) {
+          aiNotes = result.markdown
+          structuredNote = result.structuredNote
+        }
+      } catch (e) { console.error('AI generation failed:', e) }
       clearInterval(aiProgressTimer)
       setProcessingProgress(96)
       setProcessingStep('ノートを整形中...')
@@ -156,7 +142,6 @@ export default function Home() {
         aiUsed = true
         // Enrich with annotations
         aiNotes = enrichText(aiNotes)
-        setQuota(await incrementQuota())
       }
       setProcessingProgress(100)
       setProcessingStep('完了')
@@ -266,31 +251,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                </CardContent>
-              </Card>
-
-              {/* Quota */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">AI 変換枠</span>
-                      <span className="text-xs text-muted-foreground">本日残り</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, (quota.count / 200) * 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-mono tabular-nums font-semibold">
-                        {200 - quota.count}
-                        <span className="text-muted-foreground font-normal"> / 200</span>
-                      </span>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
 
