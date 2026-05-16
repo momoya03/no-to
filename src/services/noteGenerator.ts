@@ -33,8 +33,8 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 - セクションごとの情報量は内容の重要度に応じて変える
 
 【構成】
-- 最初のセクションは「目次」として、全セクションの見出し一覧を書く
-- 最後のセクションは「まとめ」として、授業全体の要点を3〜5個にまとめる`,
+- sections配列の最初の要素は「目次」として全セクションの見出し一覧を書く
+- sections配列の最後の要素は必ず「まとめ」とし、授業全体の要点を3〜5個にまとめる。本文セクションより後に置くこと`,
       schema: `【出力形式】以下のJSON形式で厳密に出力。JSON以外のテキストは一切出さないこと。
 
 {
@@ -62,8 +62,8 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 - 每个 section 的信息量根据内容重要性灵活调整
 
 【结构】
-- 第一个 section 是「目录」，列出所有 section 的标题
-- 最后一个 section 是「总结」，用3-5条要点概括整节课`,
+- sections 数组第一项是「目录」，列出所有标题
+- 数组最后一项必须是「总结」，3-5条要点概括整节课。确保放在所有正文 section 之后`,
       schema: `【输出格式】严格输出以下JSON，不要输出JSON以外的文字。
 
 {
@@ -91,8 +91,8 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 - Vary section length based on importance, not a fixed quota
 
 【Structure】
-- First section: "Outline" listing all section headings
-- Last section: "Summary" with 3-5 key takeaways from the entire lecture`,
+- First array element must be "Outline" listing all section headings
+- Last array element must be "Summary" with 3-5 takeaways. Place AFTER all content sections`,
       schema: `【Output Format】Strictly JSON only.
 
 {
@@ -120,8 +120,8 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 - 섹션별 정보량은 내용의 중요도에 따라 유연하게
 
 【구성】
-- 첫 섹션은 「목차」로, 전체 섹션 제목을 나열
-- 마지막 섹션은 「요약」으로, 수업 전체의 핵심을 3-5개로 정리`,
+- sections 배열 첫 요소는 「목차」로 전체 섹션 제목을 나열
+- 배열 마지막 요소는 반드시 「요약」으로, 3-5개 핵심 정리. 모든 본문 섹션 뒤에 둘 것`,
       schema: `【출력 형식】다음 JSON 형식으로만 출력.
 
 {
