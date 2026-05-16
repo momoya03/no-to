@@ -43,7 +43,7 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
   ]
 }
 
-各セクションは必ず1つの見出しと3〜8個の箇条書き要点を持つこと。セクション数は内容に応じて適切な数（通常5〜15個）とすること。`,
+見出しは短く端的に（10文字以内が目安）。各セクションは1つの見出しと3〜8個の要点を持つこと。`,
     },
     zh: {
       title: '你是一名专业的笔记制作助手。',
@@ -70,7 +70,7 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
   ]
 }
 
-每个章节必须有1个标题和3-8条要点。章节数量根据内容适当调整（通常5-15个）。`,
+标题要简短精炼（10字以内）。每个 section 1个标题加3-8条要点。`,
     },
     en: {
       title: 'You are a professional note-taking assistant.',
@@ -97,7 +97,7 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
   ]
 }
 
-Each section must have 1 heading and 3-8 bullet points. Produce an appropriate number of sections (typically 5-15).`,
+Keep headings short and concise (under 10 words). Each section: 1 heading + 3-8 bullet points.`,
     },
     ko: {
       title: '당신은 전문적인 노트 작성 어시스턴트입니다.',
@@ -124,7 +124,7 @@ Each section must have 1 heading and 3-8 bullet points. Produce an appropriate n
   ]
 }
 
-각 섹션은 반드시 1개의 제목과 3-8개의 요점을 가질 것. 섹션 수는 내용에 따라 적절히 (보통 5-15개).`,
+제목은 짧고 간결하게 (10자 이내). 각 섹션: 1개 제목 + 3-8개 요점.`,
     },
   }
 

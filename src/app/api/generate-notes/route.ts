@@ -22,7 +22,7 @@ const SYSTEM_PROMPT = `あなたはプロのノート作成アシスタントで
   ]
 }
 
-各セクションは必ず1つの見出しと3〜8個の箇条書き要点を持つこと。セクション数は内容に応じて適切な数（通常5〜15個）とすること。`
+見出しは短く端的に（10文字以内が目安）。各セクションは1つの見出しと3〜8個の要点を持つこと。`
 
 async function callGroq(prompt: string, apiKey: string): Promise<{ text: string; rateLimited: boolean; error?: string }> {
   try {
