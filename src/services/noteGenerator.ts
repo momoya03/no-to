@@ -344,23 +344,20 @@ async function callClientGemini(prompt: string, systemPrompt: string): Promise<s
 }
 
 async function callServerAPI(prompt: string): Promise<string> {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, 2000))
-    try {
-      const r = await fetch('/api/generate-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: prompt }),
-      })
-      if (r.ok) {
-        const d = await r.json()
-        return d.notes || ''
-      }
-      const errBody = await r.text().catch(() => '')
-      console.error(`[api] ${r.status}: ${errBody.slice(0, 500)}`)
-    } catch (e) {
-      console.error('[api] fetch exception:', e)
+  try {
+    const r = await fetch('/api/generate-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: prompt }),
+    })
+    if (r.ok) {
+      const d = await r.json()
+      return d.notes || ''
     }
+    const errBody = await r.text().catch(() => '')
+    console.error(`[api] ${r.status}: ${errBody.slice(0, 500)}`)
+  } catch (e) {
+    console.error('[api] fetch exception:', e)
   }
   return ''
 }
@@ -433,7 +430,7 @@ export async function generateStructuredNotes(
   onProgress: (msg: string, pct: number) => void
 ): Promise<{ note: StructuredNote; usedAI: boolean }> {
   const systemPrompt = buildJSONPrompt(pdfLang, noteLang)
-  const chunks = chunkText(fullText, 1500)
+  const chunks = chunkText(fullText, 4000)
 
   const structuredChunks: StructuredNote[] = []
 
@@ -474,21 +471,7 @@ export async function generateStructuredNotes(
       console.warn(`[noteGen] chunk ${i + 1}/${chunks.length}: no AI response`)
     }
 
-    // Retry once with simplified prompt for this chunk
-    await new Promise(r => setTimeout(r, 2000))
-    raw = await callServerAPI(chunkPrompt)
-    if (raw) {
-      const parsed = extractJSON(raw)
-      if (parsed) {
-        const { issues } = validateNote(parsed)
-        const repaired = issues.length > 0 ? repairNote(parsed, issues) : parsed
-        structuredChunks.push(repaired)
-        console.log(`[noteGen] chunk ${i + 1}/${chunks.length} retry OK: ${repaired.sections.length} sections`)
-        if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 3000))
-        continue
-      }
-    }
-
+    // No retry — go straight to fallback to avoid wasting API calls
     // Fallback: extract sections from raw text so content isn't lost
     const fbSections = buildFallbackSections(chunks[i], i)
     if (fbSections.length > 0) {
