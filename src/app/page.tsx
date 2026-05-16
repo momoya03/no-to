@@ -36,18 +36,28 @@ function getFileType(fileName: string): 'pdf' | 'word' | 'pptx' {
 }
 
 function splitText(text: string, maxLen: number): string[] {
-  const chunks: string[] = []
+  // First split by paragraph boundaries
   const paragraphs = text.split(/\n\n+/)
-  let current = ''
+  const chunks: string[] = []
+
   for (const p of paragraphs) {
-    if (current.length + p.length > maxLen && current.length > 0) {
-      chunks.push(current.trim())
-      current = p
+    if (p.length <= maxLen) {
+      chunks.push(p.trim())
     } else {
-      current += (current ? '\n\n' : '') + p
+      // Hard split long paragraphs at sentence boundaries
+      const sentences = p.split(/(?<=[。！？.!?])\s*/)
+      let current = ''
+      for (const s of sentences) {
+        if (current.length + s.length > maxLen && current.length > 0) {
+          chunks.push(current.trim())
+          current = s
+        } else {
+          current += s
+        }
+      }
+      if (current.trim()) chunks.push(current.trim())
     }
   }
-  if (current.trim()) chunks.push(current.trim())
   return chunks.length > 0 ? chunks : [text]
 }
 
