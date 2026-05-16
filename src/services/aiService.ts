@@ -544,7 +544,7 @@ export function enrichText(text: string): string {
   return result
 }
 
-function generateStructuredNotesLocal(fullText: string, pageCount: number): StructuredNote {
+export function generateStructuredNotesLocal(fullText: string, pageCount: number): StructuredNote {
   // Split and deduplicate lines (PPT PDFs often have repeated headers/footers)
   const allLines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0)
   const seen = new Set<string>()
