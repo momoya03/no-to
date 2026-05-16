@@ -20,11 +20,11 @@ export async function GET() {
 export async function POST() {
   try {
     const key = getTodayKey()
-    const count = await redis.incr(key)
-    // Expire at next midnight UTC
-    const now = new Date()
-    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
-    await redis.expire(key, Math.ceil((tomorrow.getTime() - now.getTime()) / 1000))
+    // Get current count — if this is a new day (key didn't exist), start from 0
+    const current = (await redis.get<number>(key)) || 0
+    const count = current + 1
+    // Set with expiry: 25 hours to safely span midnight
+    await redis.set(key, count, { ex: 90000 })
     return Response.json({ count, remaining: DAILY_LIMIT - count })
   } catch {
     return Response.json({ count: 0, remaining: DAILY_LIMIT }, { status: 500 })
