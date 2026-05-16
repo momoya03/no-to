@@ -317,7 +317,7 @@ function mergeStructuredNotes(notes: StructuredNote[]): StructuredNote {
 // ========== 7. AI Call Helpers ==========
 
 async function callClientGemini(prompt: string, systemPrompt: string): Promise<string> {
-  if (!GEMINI_KEY) return ''
+  if (!GEMINI_KEY) { console.warn('[clientGemini] no GEMINI_KEY'); return '' }
   try {
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
@@ -330,10 +330,15 @@ async function callClientGemini(prompt: string, systemPrompt: string): Promise<s
         }),
       }
     )
-    if (!r.ok) return ''
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '')
+      console.error(`[clientGemini] ${r.status}: ${errText.slice(0, 300)}`)
+      return ''
+    }
     const d = await r.json()
     return d.candidates?.[0]?.content?.parts?.[0]?.text || ''
-  } catch {
+  } catch (e) {
+    console.error('[clientGemini] exception:', e)
     return ''
   }
 }
@@ -351,7 +356,11 @@ async function callServerAPI(prompt: string): Promise<string> {
         const d = await r.json()
         return d.notes || ''
       }
-    } catch {}
+      const errBody = await r.text().catch(() => '')
+      console.error(`[api] ${r.status}: ${errBody.slice(0, 500)}`)
+    } catch (e) {
+      console.error('[api] fetch exception:', e)
+    }
   }
   return ''
 }
