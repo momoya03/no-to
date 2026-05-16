@@ -159,16 +159,11 @@ function extractJSON(raw: string): StructuredNote | null {
   const firstBrace = raw.indexOf('{')
   const lastBrace = raw.lastIndexOf('}')
   if (firstBrace !== -1 && lastBrace > firstBrace) {
-    try {
-      const candidate = raw.slice(firstBrace, lastBrace + 1)
-      // Fix common AI JSON mistakes: trailing commas, unescaped newlines in strings
-      const cleaned = candidate
-        .replace(/,(\s*[}\]])/g, '$1') // remove trailing commas
-        .replace(/\[\s*\n\s*"/g, '["') // fix arrays split across lines
-        .replace(/"\s*\n\s*\]/g, '"]')
-      try { return validateStructure(JSON.parse(cleaned)) } catch {}
-      try { return validateStructure(JSON.parse(candidate)) } catch {}
-    }
+    const candidate = raw.slice(firstBrace, lastBrace + 1)
+    // Fix common AI JSON mistakes: trailing commas
+    const cleaned = candidate.replace(/,(\s*[}\]])/g, '$1')
+    try { return validateStructure(JSON.parse(cleaned)) } catch {}
+    try { return validateStructure(JSON.parse(candidate)) } catch {}
   }
 
   // Strategy 4: try each { position individually
