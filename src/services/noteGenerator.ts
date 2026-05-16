@@ -149,20 +149,42 @@ function extractJSON(raw: string): StructuredNote | null {
   // Strategy 1: direct parse
   try { return validateStructure(JSON.parse(raw)) } catch {}
 
-  // Strategy 2: extract from ```json ... ``` fence
+  // Strategy 2: extract from ```json ... ``` or ``` ... ``` fence
   const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/)
   if (fenceMatch) {
     try { return validateStructure(JSON.parse(fenceMatch[1].trim())) } catch {}
   }
 
-  // Strategy 3: find first { to last }
+  // Strategy 3: find JSON object by matching braces
   const firstBrace = raw.indexOf('{')
   const lastBrace = raw.lastIndexOf('}')
   if (firstBrace !== -1 && lastBrace > firstBrace) {
     try {
       const candidate = raw.slice(firstBrace, lastBrace + 1)
-      return validateStructure(JSON.parse(candidate))
-    } catch {}
+      // Fix common AI JSON mistakes: trailing commas, unescaped newlines in strings
+      const cleaned = candidate
+        .replace(/,(\s*[}\]])/g, '$1') // remove trailing commas
+        .replace(/\[\s*\n\s*"/g, '["') // fix arrays split across lines
+        .replace(/"\s*\n\s*\]/g, '"]')
+      try { return validateStructure(JSON.parse(cleaned)) } catch {}
+      try { return validateStructure(JSON.parse(candidate)) } catch {}
+    }
+  }
+
+  // Strategy 4: try each { position individually
+  let pos = 0
+  while ((pos = raw.indexOf('{"title"', pos)) !== -1) {
+    // Find matching closing brace
+    let depth = 0, end = -1
+    for (let i = pos; i < raw.length; i++) {
+      if (raw[i] === '{') depth++
+      if (raw[i] === '}') depth--
+      if (depth === 0) { end = i; break }
+    }
+    if (end > pos) {
+      try { return validateStructure(JSON.parse(raw.slice(pos, end + 1))) } catch {}
+    }
+    pos++
   }
 
   return null
@@ -444,9 +466,13 @@ export async function generateStructuredNotes(
     if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 1000))
   }
 
-  if (!allChunksSucceeded || structuredChunks.length === 0) {
-    console.warn('[noteGen] AI failed, returning empty — caller should use local fallback')
+  if (structuredChunks.length === 0) {
+    console.warn('[noteGen] all chunks failed, returning empty — caller should use local fallback')
     return { note: { title: '', sections: [] }, usedAI: false }
+  }
+
+  if (!allChunksSucceeded) {
+    console.warn(`[noteGen] ${structuredChunks.length}/${chunks.length} chunks succeeded — merging partial AI result`)
   }
 
   const merged = mergeStructuredNotes(structuredChunks)
