@@ -430,7 +430,7 @@ export async function generateStructuredNotes(
           const repaired = issues.length > 0 ? repairNote(parsed, issues) : parsed
           structuredChunks.push(repaired)
           console.log(`[noteGen] chunk ${i + 1}/${chunks.length}: ${repaired.sections.length} sections (issues: ${issues.length})`)
-          if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 500))
+          if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 3000))
           continue
         }
         console.warn(`[noteGen] chunk ${i + 1}/${chunks.length}: validation fatal, issues:`, issues)
@@ -442,7 +442,7 @@ export async function generateStructuredNotes(
     }
 
     // Retry once with simplified prompt for this chunk
-    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 1000))
+    await new Promise(r => setTimeout(r, 2000))
     raw = await callServerAPI(chunkPrompt)
     if (raw) {
       const parsed = extractJSON(raw)
@@ -451,13 +451,13 @@ export async function generateStructuredNotes(
         const repaired = issues.length > 0 ? repairNote(parsed, issues) : parsed
         structuredChunks.push(repaired)
         console.log(`[noteGen] chunk ${i + 1}/${chunks.length} retry OK: ${repaired.sections.length} sections`)
-        if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 500))
+        if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 3000))
         continue
       }
     }
 
     console.warn(`[noteGen] chunk ${i + 1}/${chunks.length} failed completely`)
-    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 500))
+    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 3000))
   }
 
   if (structuredChunks.length === 0) {

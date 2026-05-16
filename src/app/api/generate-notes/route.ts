@@ -35,7 +35,7 @@ async function callGroq(prompt: string, apiKey: string): Promise<{ text: string;
         temperature: 0.7, max_tokens: 8192
       })
     })
-    if (r.status === 429) return { text: '', rateLimited: true }
+    if (r.status === 429) return { text: '', rateLimited: true, error: 'Groq rate limited (429)' }
     if (!r.ok) {
       const body = await r.text().catch(() => '')
       return { text: '', rateLimited: false, error: `Groq ${r.status}: ${body.slice(0, 300)}` }
@@ -58,7 +58,7 @@ async function callDeepSeek(prompt: string, apiKey: string): Promise<{ text: str
         temperature: 0.7, max_tokens: 8192
       })
     })
-    if (r.status === 429 || r.status === 402) return { text: '', rateLimited: true }
+    if (r.status === 429 || r.status === 402) return { text: '', rateLimited: true, error: `DeepSeek rate limited (${r.status})` }
     if (!r.ok) {
       const body = await r.text().catch(() => '')
       return { text: '', rateLimited: false, error: `DeepSeek ${r.status}: ${body.slice(0, 300)}` }
@@ -81,7 +81,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<{ text: strin
         generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
       }), signal: c.signal
     })
-    if (r.status === 429) return { text: '', rateLimited: true }
+    if (r.status === 429) return { text: '', rateLimited: true, error: 'Gemini rate limited (429)' }
     if (!r.ok) {
       const body = await r.text().catch(() => '')
       return { text: '', rateLimited: false, error: `Gemini ${r.status}: ${body.slice(0, 300)}` }
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
     if (!result) {
       return NextResponse.json({
         error: 'all providers exhausted',
-        details: errors.length > 0 ? errors : ['No API keys configured'],
+        details: errors.length > 0 ? errors : ['all providers returned empty (rate limited or no keys)'],
         keysFound: { deepseek: !!ds, gemini: !!gm, groq: groqKeys.length }
       }, { status: 500 })
     }
