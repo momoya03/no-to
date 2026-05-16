@@ -4,18 +4,19 @@ import React, { useState, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
-import { NoteDocument } from '@/types'
+import { NoteDocument, NoteSection } from '@/types'
 import { Button } from '@/components/ui/button'
-import { FileText, Copy, Download, ChevronLeft, ChevronRight, ScrollText, Columns } from 'lucide-react'
+import { FileText, Copy, Download, ChevronLeft, ChevronRight, ScrollText, Columns, List } from 'lucide-react'
 
 interface NotesViewerProps {
   noteDocument: NoteDocument
   currentPage: number
-  displayMode: 'page' | 'all'
-  onDisplayModeChange: (mode: 'page' | 'all') => void
+  displayMode: 'page' | 'all' | 'outline'
+  onDisplayModeChange: (mode: 'page' | 'all' | 'outline') => void
   onCopy: () => void
   onExportPDF: () => void
   onExportTXT: () => void
+  noteSections?: NoteSection[]
 }
 
 function splitIntoSections(content: string): { heading: string; body: string }[] {
@@ -55,16 +56,25 @@ export function NotesViewer({
   onDisplayModeChange,
   onCopy,
   onExportPDF,
-  onExportTXT
+  onExportTXT,
+  noteSections
 }: NotesViewerProps) {
   const [currentSection, setCurrentSection] = useState(0)
   const [animating, setAnimating] = useState(false)
   const [direction, setDirection] = useState<'left' | 'right'>('right')
 
   const sections = useMemo(() => {
+    // Priority 1: structured sections from noteGenerator
+    if (noteSections && noteSections.length > 0) {
+      return noteSections.map(s => ({
+        heading: s.heading,
+        body: s.bullets.map(b => `- ${b}`).join('\n')
+      }))
+    }
+    // Priority 2: regex-based split from markdown (backward compat)
     const content = noteDocument.pages.map(p => p.noteContent).join('\n\n')
     return splitIntoSections(content)
-  }, [noteDocument])
+  }, [noteDocument, noteSections])
 
   const totalSections = sections.length
   const section = sections[currentSection] || sections[0]
@@ -192,6 +202,15 @@ export function NotesViewer({
                 <Columns className="h-3 w-3" />
                 ページ
               </button>
+              <button
+                onClick={() => onDisplayModeChange('outline')}
+                className={`px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors ${
+                  displayMode === 'outline' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'
+                }`}
+              >
+                <List className="h-3 w-3" />
+                アウトライン
+              </button>
             </div>
 
             <Button variant="outline" size="sm" onClick={onCopy} className="h-8 text-xs">
@@ -212,7 +231,46 @@ export function NotesViewer({
 
       {/* Content area */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        {displayMode === 'all' ? (
+        {displayMode === 'outline' ? (
+          /* Outline mode — TOC with clickable headings */
+          <div className="flex-1 overflow-auto p-4">
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-xl font-bold mb-1 text-gray-900 dark:text-gray-100">
+                {noteDocument.pages[0]?.structuredNote?.title || noteDocument.fileName}
+              </h2>
+              <p className="text-xs text-muted-foreground mb-6">
+                {totalSections} セクション
+              </p>
+              <ol className="space-y-3">
+                {sections.map((s, i) => (
+                  <li key={i}>
+                    <button
+                      onClick={() => {
+                        setCurrentSection(i)
+                        onDisplayModeChange('page')
+                      }}
+                      className="w-full text-left p-3 rounded-lg border hover:border-primary/50 hover:bg-muted/50 transition-colors group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-xs font-mono text-muted-foreground mt-0.5 shrink-0">
+                          {i + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-primary transition-colors">
+                            {s.heading || `セクション ${i + 1}`}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {s.body.split('\n').filter(l => l.trim()).length} 項目
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        ) : displayMode === 'all' ? (
           /* Scroll mode */
           <div className="flex-1 overflow-auto p-4 note-content">
             <div className="max-w-4xl mx-auto space-y-8">

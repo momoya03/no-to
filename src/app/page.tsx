@@ -10,15 +10,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Moon, Sun, FileText, Sparkles, ArrowRight } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { generateStructuredNotes, noteToMarkdown } from '@/services/noteGenerator'
 import { createFullTextStream, enrichText } from '@/services/aiService'
 import { extractPDFText } from '@/services/pdfService'
 import { extractWordText } from '@/services/wordService'
 import { extractPPTXText } from '@/services/pptxService'
-import { PDFPage, NoteDocument, NotePage } from '@/types'
+import { PDFPage, NoteDocument, NotePage, StructuredNote } from '@/types'
 import { generateId } from '@/lib/utils'
 import { getQuota, incrementQuota } from '@/lib/quota'
-
-const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
 
 const LANG_OPTIONS: Record<string, string> = {
   ja: '日本語',
@@ -35,204 +34,30 @@ function getFileType(fileName: string): 'pdf' | 'word' | 'pptx' {
   return 'pdf'
 }
 
-function splitText(text: string, maxLen: number): string[] {
-  // First split by paragraph boundaries
-  const paragraphs = text.split(/\n\n+/)
-  const chunks: string[] = []
-
-  for (const p of paragraphs) {
-    if (p.length <= maxLen) {
-      chunks.push(p.trim())
-    } else {
-      // Hard split long paragraphs at sentence boundaries
-      const sentences = p.split(/(?<=[。！？.!?])\s*/)
-      let current = ''
-      for (const s of sentences) {
-        if (current.length + s.length > maxLen && current.length > 0) {
-          chunks.push(current.trim())
-          current = s
-        } else {
-          current += s
-        }
-      }
-      if (current.trim()) chunks.push(current.trim())
-    }
-  }
-  return chunks.length > 0 ? chunks : [text]
-}
-
-function buildSystemPrompt(pdfLang: string, noteLang: string): string {
-  const labels: Record<string, { title: string; dir: string; rules: string; output: string }> = {
-    ja: {
-      title: 'あなたはプロフェッショナルなノート作成アシスタントです。',
-      dir: '学習用ノートを生成してください。',
-      rules: `【絶対禁止】
-- 表（テーブル）禁止、箇条書き（-）と見出し（#、##）のみ
-- 捏造禁止、不明点は「記載なし」
-- 参考文献・引用文献・出典リストは絶対に出力しない
-- 元テキスト・原文の丸写しセクション禁止
-- ページ番号言及禁止
-
-【重要強調】重要なポイントや数値は **太字** で強調
-
-【出力構成】
-1. タイトルと基本情報
-2. 全体構成（目次）
-3. セクションごとの重要ポイント
-4. 自己テスト問題3問（模範解答付き）
-
-【難解用語】特に難しい専門用語や特殊な読み方の漢字には、直後に（注：簡潔な説明or読み方）を付けてください。多用せず、本当に難しいものだけに。`,
-      output: '以下の資料テキストを解析し、学習ノートを生成してください：',
-    },
-    zh: {
-      title: '你是一名专业的笔记制作助手。',
-      dir: '请生成学习笔记。',
-      rules: `【绝对禁止】
-- 禁止表格，仅使用列表（-）和标题（#、##）
-- 禁止捏造，不明确处标注「未记载」
-- 绝对不要输出参考文献、引用文献、出处列表
-- 禁止原文照抄段落
-- 禁止提及页码
-
-【重点强调】重要内容和数字用 **加粗** 强调
-
-【输出结构】
-1. 标题与基本信息
-2. 整体结构（目录）
-3. 各章节重点
-4. 自测题3道（附参考答案）
-
-【难解术语】特别难的专业术语或罕见汉字，在其后添加（注：简要说明）。不要多用，仅在真正难解处。`,
-      output: '请解析以下资料文本，生成学习笔记：',
-    },
-    en: {
-      title: 'You are a professional note-taking assistant.',
-      dir: 'Generate study notes.',
-      rules: `【Strictly Forbidden】
-- No tables — use bullet points (-) and headings (#, ##) only
-- No fabrication — mark unclear items as "Not documented"
-- Never output references, citations, or source lists
-- No verbatim copying of the original text
-- No page number mentions
-
-【Highlighting】Important points and figures must be **bold**
-
-【Output Structure】
-1. Title & basic info
-2. Table of contents
-3. Key points per section
-4. 3 self-test questions (with model answers)
-
-【Difficult Terms】For particularly difficult technical terms or rare readings, add (注：brief explanation) right after. Use sparingly — only for truly difficult items.`,
-      output: 'Analyze the following document and generate study notes:',
-    },
-    ko: {
-      title: '당신은 전문적인 노트 작성 어시스턴트입니다.',
-      dir: '학습 노트를 생성해 주세요.',
-      rules: `【절대 금지】
-- 표 금지, 글머리 기호(-)와 제목(#, ##)만 사용
-- 날조 금지, 불명확한 사항은 「기재 없음」으로 표시
-- 참고문헌·인용문헌·출처 목록 절대 출력 금지
-- 원문 그대로 복사 금지
-- 페이지 번호 언급 금지
-
-【중요 강조】중요한 포인트와 수치는 **굵게**
-
-【출력 구성】
-1. 제목과 기본 정보
-2. 전체 구성(목차)
-3. 섹션별 중요 포인트
-4. 자가 테스트 문제 3문(모범 답안 포함)
-
-【어려운 용어】특히 어려운 전문 용어나 특수 읽기의 한자에는 바로 뒤에 (注：간결한 설명이나 읽기)를 붙여 주세요. 과도하게 사용하지 말고 정말 어려운 것만.`,
-      output: '다음 자료 텍스트를 분석하여 학습 노트를 생성해 주세요:',
-    },
-  }
-
-  const l = labels[noteLang] || labels.ja
-
-  return `${l.title} 元の資料は${LANG_OPTIONS[pdfLang] || '日本語'}で書かれています。${l.dir}
-
-${l.rules}
-
-【出力言語】必ず${LANG_OPTIONS[noteLang] || '日本語'}で出力してください。`
-}
-
 async function generateNotesWithAI(
   fullText: string,
   pdfLang: string,
   noteLang: string,
   onProgress: (step: string, progress: number) => void
-): Promise<string> {
+): Promise<{ markdown: string; structuredNote: StructuredNote } | null> {
   onProgress('AIによるノート生成中...', 0)
   console.log('[DEBUG] generateNotesWithAI started, fullText length:', fullText.length)
 
-  // Split into chunks that fit within Vercel free tier 10s timeout
-  const CHUNK_SIZE = 1500
-  const chunks = splitText(fullText, CHUNK_SIZE)
-  const allNotes: string[] = []
-  console.log('[DEBUG] chunks:', chunks.length, 'first chunk size:', chunks[0]?.length || 0)
+  try {
+    const { note, usedAI } = await generateStructuredNotes(fullText, pdfLang, noteLang, onProgress)
 
-  for (let i = 0; i < chunks.length; i++) {
-    onProgress(`AI生成中 (${i + 1}/${chunks.length})...`, Math.round((i / chunks.length) * 80))
-
-    const chunkPrompt = chunks.length === 1
-      ? `以下の資料を解析し学習ノートを作成してください：\n\n${chunks[i]}`
-      : `以下の資料のパート${i + 1}/${chunks.length}を解析し学習ノートを作成してください：\n\n${chunks[i]}`
-
-    let notes = ''
-
-    // Client-side Gemini
-    if (GEMINI_KEY) {
-      try {
-        const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `${buildSystemPrompt(pdfLang, noteLang)}\n\n${chunkPrompt}` }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-            }) }
-        )
-        if (r.ok) {
-          const d = await r.json()
-          notes = d.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        }
-      } catch {}
+    if (!usedAI || !note.title || note.sections.length === 0) {
+      console.warn('[DEBUG] generateStructuredNotes returned empty, usedAI:', usedAI)
+      return null
     }
 
-    // Server API with retry (handles temporary rate limits)
-    if (!notes) {
-      for (let attempt = 0; attempt < 3 && !notes; attempt++) {
-        if (attempt > 0) {
-          onProgress(`AI生成中 (${i + 1}/${chunks.length})... リトライ${attempt}`, Math.round((i / chunks.length) * 80))
-          await new Promise(r => setTimeout(r, 3000 * attempt))
-        }
-        try {
-          const r = await fetch('/api/generate-notes', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: chunkPrompt })
-          })
-          if (r.ok) {
-            const d = await r.json()
-            notes = d.notes || ''
-          }
-        } catch {}
-      }
-    }
-
-    if (notes) {
-      allNotes.push(notes)
-      console.log(`[DEBUG] chunk ${i+1}/${chunks.length} OK, notes len:`, notes.length)
-    } else {
-      console.warn(`[DEBUG] chunk ${i+1}/${chunks.length} FAILED after retries`)
-    }
-    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 500))
+    const markdown = noteToMarkdown(note)
+    console.log('[DEBUG] generateNotesWithAI OK, sections:', note.sections.length)
+    return { markdown, structuredNote: note }
+  } catch (e) {
+    console.error('[DEBUG] generateNotesWithAI exception:', e)
+    return null
   }
-
-  console.log('[DEBUG] allNotes count:', allNotes.length)
-  if (allNotes.length > 0) return allNotes.join('\n\n---\n\n')
-  console.warn('[DEBUG] no notes generated, returning empty')
-  return ''
 }
 
 export default function Home() {
@@ -304,11 +129,16 @@ export default function Home() {
       const overLimit = currentQuota.count >= 200
 
       let aiNotes = ''
+      let structuredNote: StructuredNote | undefined
       if (overLimit) {
         console.warn('[quota] 1日200回制限に達したためAIをスキップします')
       } else {
         try {
-          aiNotes = await generateNotesWithAI(fullText, pdfLang, noteLang, () => {})
+          const result = await generateNotesWithAI(fullText, pdfLang, noteLang, () => {})
+          if (result) {
+            aiNotes = result.markdown
+            structuredNote = result.structuredNote
+          }
         } catch (e) { console.error('AI generation failed:', e) }
       }
       clearInterval(aiProgressTimer)
@@ -321,6 +151,7 @@ export default function Home() {
         const { generateNotesLocal } = await import('@/services/aiService')
         const localNotes = generateNotesLocal(pdfPages)
         aiNotes = localNotes.map(p => p.noteContent).join('\n\n')
+        structuredNote = localNotes[0]?.structuredNote
       } else {
         aiUsed = true
         // Post-process: marker-style highlights
@@ -338,7 +169,8 @@ export default function Home() {
       const notePage: NotePage = {
         pageNumber: 1,
         originalContent: fullText,
-        noteContent: aiNotes
+        noteContent: aiNotes,
+        structuredNote
       }
 
       const noteDocument: NoteDocument = {

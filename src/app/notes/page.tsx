@@ -6,13 +6,13 @@ import { NotesViewer } from '@/components/NotesViewer'
 import { Button } from '@/components/ui/button'
 import { Moon, Sun, ArrowLeft } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { NoteDocument, PDFPage, AppState } from '@/types'
+import { NoteDocument, PDFPage, AppState, NoteSection } from '@/types'
 import { exportToPDF, exportToTXT, copyToClipboard, getNotesAsText } from '@/services/exportService'
 
 export default function NotesPage() {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
-  
+
   const [state, setState] = useState<AppState>({
     pdfFile: null,
     pdfPages: [],
@@ -24,6 +24,9 @@ export default function NotesPage() {
     processingStep: '',
     error: null
   })
+
+  // Extract structured sections from noteDocument if available
+  const noteSections: NoteSection[] | undefined = state.noteDocument?.pages[0]?.structuredNote?.sections
 
   const [mounted, setMounted] = useState(false)
   const [aiUsed, setAiUsed] = useState<boolean | null>(null)
@@ -69,7 +72,7 @@ export default function NotesPage() {
     setState(prev => ({ ...prev, currentPage: page }))
   }, [])
 
-  const handleDisplayModeChange = useCallback((mode: 'page' | 'all') => {
+  const handleDisplayModeChange = useCallback((mode: 'page' | 'all' | 'outline') => {
     setState(prev => ({ ...prev, displayMode: mode }))
   }, [])
 
@@ -185,6 +188,7 @@ export default function NotesPage() {
             onCopy={handleCopy}
             onExportPDF={handleExportPDF}
             onExportTXT={handleExportTXT}
+            noteSections={noteSections}
           />
         </div>
       </main>

@@ -5,10 +5,22 @@ export interface PDFPage {
   imageData?: string
 }
 
+export interface NoteSection {
+  id: string
+  heading: string
+  bullets: string[]
+}
+
+export interface StructuredNote {
+  title: string
+  sections: NoteSection[]
+}
+
 export interface NotePage {
   pageNumber: number
   originalContent: string
   noteContent: string
+  structuredNote?: StructuredNote
 }
 
 export interface NoteDocument {
@@ -24,7 +36,7 @@ export interface AppState {
   pdfPages: PDFPage[]
   noteDocument: NoteDocument | null
   currentPage: number
-  displayMode: 'page' | 'all'
+  displayMode: 'page' | 'all' | 'outline'
   isProcessing: boolean
   processingProgress: number
   processingStep: string

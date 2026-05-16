@@ -1,6 +1,6 @@
 'use client'
 
-import { PDFPage, NotePage } from '@/types'
+import { PDFPage, NotePage, StructuredNote, NoteSection } from '@/types'
 import { generateId } from '@/lib/utils'
 
 function cleanPdfTextCompletely(text: string): string {
@@ -544,7 +544,7 @@ export function enrichText(text: string): string {
   return result
 }
 
-function generateStructuredNotes(fullText: string, pageCount: number): string {
+function generateStructuredNotesLocal(fullText: string, pageCount: number): StructuredNote {
   // Split and deduplicate lines (PPT PDFs often have repeated headers/footers)
   const allLines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0)
   const seen = new Set<string>()
@@ -554,34 +554,28 @@ function generateStructuredNotes(fullText: string, pageCount: number): string {
     seen.add(key)
     return true
   })
-  if (lines.length === 0) return '有効なテキストが見つかりませんでした。'
+
+  if (lines.length === 0) {
+    return { title: '無題ノート', sections: [{ id: 's1', heading: '内容', bullets: ['有効なテキストが見つかりませんでした。'] }] }
+  }
 
   const title = detectTitle(lines)
-  const keyTerms = extractAutoKeyTerms(fullText)
-  const selfTestQ = generateSelfTestQuestions(fullText)
+  const rawSections = splitIntoSections(lines)
+  const noteSections: NoteSection[] = rawSections
+    .filter(s => s.content.length > 0)
+    .map((s, i) => ({
+      id: `s${i + 1}`,
+      heading: s.heading || `セクション ${i + 1}`,
+      bullets: extractKeySentences(s.content.join(' '), 5)
+    }))
 
-  let output = `# ${title}\n\n`
-  output += `**ページ数:** ${pageCount}ページ | **文字数:** ${fullText.length}文字\n\n---\n\n`
-
-  // Key concepts section
-  if (keyTerms.length > 0) {
-    output += `## 核心キーワード\n\n`
-    for (const term of keyTerms.slice(0, 12)) {
-      const ctx = extractContext(fullText, term)
-      output += `- **${term}**${ctx ? ` — ${ctx}` : ''}\n`
-    }
-    output += '\n---\n\n'
+  if (noteSections.length === 0) {
+    // Fallback: treat whole text as one section
+    const bullets = extractKeySentences(lines.join(' '), 8)
+    return { title, sections: [{ id: 's1', heading: '概要', bullets }] }
   }
 
-  // Section-by-section refined content
-  output += buildContentSummary(lines)
-
-  // Self-test questions
-  if (selfTestQ.trim()) {
-    output += `---\n\n## 自己確認問題\n\n${selfTestQ}\n`
-  }
-
-  return output
+  return { title, sections: noteSections }
 }
 
 // ========== Main entry point ==========
@@ -596,17 +590,25 @@ export function generateNotesLocal(pages: PDFPage[]): NotePage[] {
     notePages.push({
       pageNumber: 1,
       originalContent: '',
-      noteContent: '有効なコンテンツがありませんでした。'
+      noteContent: '有効なコンテンツがありませんでした。',
+      structuredNote: { title: '無題ノート', sections: [{ id: 's1', heading: '内容', bullets: ['有効なコンテンツがありませんでした。'] }] }
     })
     return notePages
   }
 
-  const structuredNotes = generateStructuredNotes(fullText, pages.length)
+  const structuredNote = generateStructuredNotesLocal(fullText, pages.length)
+
+  // Convert to markdown for noteContent
+  const markdown = `# ${structuredNote.title}\n\n**ページ数:** ${pages.length}ページ | **文字数:** ${fullText.length}文字\n\n---\n\n` +
+    structuredNote.sections.map(s =>
+      `## ${s.heading}\n${s.bullets.map(b => `- ${b}`).join('\n')}`
+    ).join('\n\n')
 
   notePages.push({
     pageNumber: 1,
     originalContent: fullText,
-    noteContent: structuredNotes
+    noteContent: markdown,
+    structuredNote
   })
 
   return notePages
