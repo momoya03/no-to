@@ -155,11 +155,13 @@ async function generateNotesWithAI(
   onProgress: (step: string, progress: number) => void
 ): Promise<string> {
   onProgress('AIによるノート生成中...', 0)
+  console.log('[DEBUG] generateNotesWithAI started, fullText length:', fullText.length)
 
   // Split into chunks that fit within Vercel free tier 10s timeout
   const CHUNK_SIZE = 3500
   const chunks = splitText(fullText, CHUNK_SIZE)
   const allNotes: string[] = []
+  console.log('[DEBUG] chunks:', chunks.length, 'first chunk size:', chunks[0]?.length || 0)
 
   for (let i = 0; i < chunks.length; i++) {
     onProgress(`AI生成中 (${i + 1}/${chunks.length})...`, Math.round((i / chunks.length) * 80))
@@ -208,12 +210,18 @@ async function generateNotesWithAI(
       }
     }
 
-    if (notes) allNotes.push(notes)
-    // Small delay between chunks to avoid rate limiting
+    if (notes) {
+      allNotes.push(notes)
+      console.log(`[DEBUG] chunk ${i+1}/${chunks.length} OK, notes len:`, notes.length)
+    } else {
+      console.warn(`[DEBUG] chunk ${i+1}/${chunks.length} FAILED after retries`)
+    }
     if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 500))
   }
 
+  console.log('[DEBUG] allNotes count:', allNotes.length)
   if (allNotes.length > 0) return allNotes.join('\n\n---\n\n')
+  console.warn('[DEBUG] no notes generated, returning empty')
   return ''
 }
 
