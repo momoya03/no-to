@@ -156,18 +156,13 @@ async function generateNotesWithAI(
 ): Promise<string> {
   onProgress('AIによるノート生成中...', 0)
 
-  // Step 1: Pre-extract key content locally (avoids Vercel timeout)
-  onProgress('重要ポイントを抽出中...', 10)
-  const { buildContentSummary, extractAutoKeyTerms } = await import('@/services/aiService')
-  const summary = buildContentSummary(fullText.split('\n'))
-  const terms = extractAutoKeyTerms(fullText)
+  // Truncate to fit within Vercel 10s free tier timeout
+  const maxLen = 3500
+  const prompt = fullText.length > maxLen
+    ? `以下の資料（抜粋）から学習ノートを作成してください：\n\n${fullText.slice(0, maxLen)}\n\n（資料が長いため冒頭部分のみ抜粋しています。重要な内容をできるだけ詳しくノートにまとめてください）`
+    : `以下の資料を解析し学習ノートを作成してください：\n\n${fullText}`
 
-  // Step 2: Build compact prompt with pre-extracted content
-  const compactPrompt = `【資料の重要ポイント抜粋】\n${summary}\n\n【重要キーワード】\n${terms.join('、')}\n\n上記の内容から完全な学習ノートを作成してください。`
-
-  // Step 3: Send compact prompt to AI
-  let notes = ''
-
+  // Try client-side Gemini first
   if (GEMINI_KEY) {
     try {
       const response = await fetch(
@@ -175,33 +170,33 @@ async function generateNotesWithAI(
         {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `${buildSystemPrompt(pdfLang, noteLang)}\n\n${compactPrompt}` }] }],
+            contents: [{ parts: [{ text: `${buildSystemPrompt(pdfLang, noteLang)}\n\n${prompt}` }] }],
             generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
           })
         }
       )
       if (response.ok) {
         const data = await response.json()
-        notes = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        const notes = data.candidates?.[0]?.content?.parts?.[0]?.text
+        if (notes) return notes
       }
     } catch {}
   }
 
-  if (!notes) {
-    try {
-      const response = await fetch('/api/generate-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: compactPrompt })
-      })
-      if (response.ok) {
-        const data = await response.json()
-        notes = data.notes || ''
-      }
-    } catch {}
-  }
+  // Server API fallback
+  try {
+    const response = await fetch('/api/generate-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: prompt })
+    })
+    if (response.ok) {
+      const data = await response.json()
+      if (data.notes) return data.notes
+    }
+  } catch {}
 
-  return notes
+  return ''
 }
 
 export default function Home() {
