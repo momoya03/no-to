@@ -31,7 +31,10 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 - 重要な部分・複雑な概念 → 詳しく、要点を多めに
 - 背景説明・補足情報 → 簡潔に、要点は少なく
 - セクションごとの情報量は内容の重要度に応じて変える
-- 硬直的な「1セクション何個」ルールは不要。内容が求めている分量で書く`,
+
+【構成】
+- 最初のセクションは「目次」として、全セクションの見出し一覧を書く
+- 最後のセクションは「まとめ」として、授業全体の要点を3〜5個にまとめる`,
       schema: `【出力形式】以下のJSON形式で厳密に出力。JSON以外のテキストは一切出さないこと。
 
 {
@@ -57,7 +60,10 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 - 重要内容、复杂概念 → 详细写，要点多一些
 - 背景说明、补充信息 → 简洁写，要点少一些
 - 每个 section 的信息量根据内容重要性灵活调整
-- 不要僵化地统一每个 section 的要点数量`,
+
+【结构】
+- 第一个 section 是「目录」，列出所有 section 的标题
+- 最后一个 section 是「总结」，用3-5条要点概括整节课`,
       schema: `【输出格式】严格输出以下JSON，不要输出JSON以外的文字。
 
 {
@@ -83,7 +89,10 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 - Core concepts, complex ideas → more detail, more bullet points
 - Background info, supplementary notes → concise, fewer bullets
 - Vary section length based on importance, not a fixed quota
-- Don't force every section to have the same number of bullets`,
+
+【Structure】
+- First section: "Outline" listing all section headings
+- Last section: "Summary" with 3-5 key takeaways from the entire lecture`,
       schema: `【Output Format】Strictly JSON only.
 
 {
@@ -109,7 +118,10 @@ function buildJSONPrompt(pdfLang: string, noteLang: string): string {
 - 중요한 내용·복잡한 개념 → 상세히, 요점 많이
 - 배경 설명·보충 정보 → 간결하게, 요점 적게
 - 섹션별 정보량은 내용의 중요도에 따라 유연하게
-- 모든 섹션에 같은 개수의 bullet을 강제하지 말 것`,
+
+【구성】
+- 첫 섹션은 「목차」로, 전체 섹션 제목을 나열
+- 마지막 섹션은 「요약」으로, 수업 전체의 핵심을 3-5개로 정리`,
       schema: `【출력 형식】다음 JSON 형식으로만 출력.
 
 {
